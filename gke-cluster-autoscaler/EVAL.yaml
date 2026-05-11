@@ -1,0 +1,52 @@
+cases:
+- id: "gke_autoscaling_enable_ca"
+  prompt: "How do I enable cluster autoscaler on an existing GKE node pool named 'my-pool' with a range of 1 to 5 nodes?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response provides the 'gcloud container clusters update' command."
+  - "The response includes '--enable-autoscaling', '--node-pool=my-pool', '--min-nodes=1', and '--max-nodes=5'."
+  - "The response correctly identifies the location (zone or region) must be specified."
+
+- id: "gke_autoscaling_debug_pending"
+  prompt: "My pods are stuck in Pending and the autoscaler isn't adding nodes. How do I debug this?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends checking 'kubectl describe pod' for events."
+  - "The response suggests inspecting Cluster Autoscaler visibility logs ('container.googleapis.com/cluster-autoscaler-visibility')."
+  - "The response mentions checking if the pod resource requests fit the node pool's machine type or if '--max-nodes' has been reached."
+  - "The response identifies CCC-specific blockers like 'whenUnsatisfiable: DoNotScaleUp'."
+
+- id: "gke_autoscaling_optimize_consolidation"
+  prompt: "I want my GKE cluster to remove underutilized nodes more aggressively to save costs. What settings should I change?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends setting the autoscaling profile to 'optimize-utilization'."
+  - "The response suggests tuning 'consolidationThreshold' and 'consolidationDelayMinutes' in the ComputeClass."
+  - "The response mentions that 'consolidationThreshold: 0' is the most aggressive setting."
+  - "The response warns about PodDisruptionBudgets or 'safe-to-evict' annotations that might block scale-down."
+
+- id: "gke_autoscaling_spot_obtainability"
+  prompt: "How should I configure the location policy for a Spot VM workload to ensure it gets scheduled even if capacity is tight?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends setting '--location-policy=ANY'."
+  - "The response explains that 'ANY' maximizes obtainability by trying all zones in parallel for Spot capacity."
+  - "The response mentions that this can be set on a manual node pool or within a ComputeClass priority."
+
+- id: "gke_autoscaling_prewarming"
+  prompt: "My bursty application suffers from high latency because NAC takes too long to create new node pools. Is there a way to pre-warm capacity?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response suggests using Capacity Buffers (autoscaling.x-k8s.io/v1beta1)."
+  - "The response explains the 'active-capacity' vs 'standby-capacity' strategies."
+  - "The response mentions that the buffer should match the target ComputeClass via a nodeSelector."
