@@ -23,7 +23,7 @@
 # whenUnsatisfiable: ScaleUpAnyway is intentional — never let priority
 # exhaustion block a kube-system pod (would cascade into a wider outage).
 #
-# See gke-node-autoscaling-debug.md → "System pods blocking consolidation".
+# See gke-cluster-autoscaling-debug.md → "System pods blocking consolidation".
 
 apiVersion: cloud.google.com/v1
 kind: ComputeClass
