@@ -1,0 +1,54 @@
+cases:
+- id: "gke_compute_class_maximize_obtainability"
+  prompt: "As a platform engineer, how do I use GKE ComputeClasses to maximize obtainability for a GPU-intensive workload?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends an intent-based priority list with multiple machine families or zones."
+  - "The response mentions using 'activeMigration' to return to the preferred tier once capacity is available."
+  - "The response suggests using multiple zones to mitigate regional stockouts."
+
+- id: "gke_compute_class_karpenter_migration"
+  prompt: "I am migrating from Karpenter on EKS to GKE. How do I translate my Karpenter NodePools to GKE ComputeClasses?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response correctly maps Karpenter NodePools to GKE ComputeClasses (CCC)."
+  - "The response explains that Karpenter 'weights' map to the top-to-bottom order of the CCC 'priorities' list."
+  - "The response mentions translating Karpenter 'drift' to CCC 'activeMigration'."
+  - "The response identifies that node labels and taints are defined in the 'nodePoolConfig' or per-priority section of the CCC."
+
+- id: "gke_compute_class_cost_optimization"
+  prompt: "How can I implement a cost-optimized Spot-first strategy with an On-Demand fallback using ComputeClasses?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response provides a YAML example or description of a CCC with Spot priorities at the top."
+  - "The response includes an On-Demand priority as a lower-priority fallback."
+  - "The response mentions that workloads must tolerate the Spot taint or that the CCC handles auto-toleration."
+  - "The response discusses the trade-off between cost and preemption risk."
+
+- id: "gke_compute_class_troubleshooting"
+  prompt: "My pods are stuck in Pending even though I have a ComputeClass defined. How do I debug why NAC isn't creating nodes?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response suggests checking the ComputeClass status using 'kubectl describe computeclass'."
+  - "The response mentions inspecting Cluster Autoscaler visibility logs or events ('kubectl get events')."
+  - "The response identifies common causes like stockouts, conflicting pod affinity/selectors, or quota limits."
+  - "The response recommends verifying that 'nodePoolAutoCreation.enabled' is set to true."
+
+- id: "gke_compute_class_database_tuning"
+  prompt: "How do I configure a ComputeClass for a high-performance Postgres database that needs specific kernel tunings?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends using 'nodeSystemConfig.linuxNodeConfig' for sysctls and hugepages."
+  - "The response mentions using 'machineFamily: n4' or similar performance-optimized families."
+  - "The response suggests configuring boot disk types (e.g., hyperdisk-balanced) to match performance needs."
+  - "The response mentions binding the CCC to a manual node pool if zero-latency scheduling is required."
