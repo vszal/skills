@@ -1,6 +1,6 @@
 # GKE Node Autoscaling: Enable
 
-Turning on node-level scaling: cluster autoscaler (CA) on a pool, Node Auto-Provisioning (NAP) cluster-wide, and Node Pool Auto-Creation (NAC) per ComputeClass. For tuning the autoscaling profile, consolidation thresholds, and `autoscalingPolicy` see [gke-node-autoscaling-optimize.md](./gke-node-autoscaling-optimize.md). For triage when scaling doesn't happen see [gke-node-autoscaling-debug.md](./gke-node-autoscaling-debug.md). Authoritative concepts: [Cluster autoscaler](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/cluster-autoscaler), [Node auto-provisioning](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning).
+Turning on node-level scaling: cluster autoscaler (CA) on a pool, Node Auto-Provisioning (NAP) cluster-wide, and Node Pool Auto-Creation (NAC) per ComputeClass. For tuning the autoscaling profile, consolidation thresholds, and `autoscalingPolicy` see [gke-cluster-autoscaling-optimize.md](./gke-cluster-autoscaling-optimize.md). For triage when scaling doesn't happen see [gke-cluster-autoscaling-debug.md](./gke-cluster-autoscaling-debug.md). Authoritative concepts: [Cluster autoscaler](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/cluster-autoscaler), [Node auto-provisioning](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning).
 
 > **MCP tools:** `get_cluster`, `update_cluster`, `update_node_pool`
 
@@ -62,7 +62,7 @@ gcloud container node-pools create my-pool \
   --machine-type=n4-standard-8
 ```
 
-`--location-policy=BALANCED` (vs. `ANY`) keeps node counts even across zones — important for HA workloads. `ANY` minimizes provisioning latency and tolerates uneven distribution. See [optimize doc](./gke-node-autoscaling-optimize.md) for when to pick which.
+`--location-policy=BALANCED` (vs. `ANY`) keeps node counts even across zones — important for HA workloads. `ANY` minimizes provisioning latency and tolerates uneven distribution. See [optimize doc](./gke-cluster-autoscaling-optimize.md) for when to pick which.
 
 ## Node Auto-Provisioning (NAP) — cluster-wide
 
@@ -153,7 +153,7 @@ Common migration on existing clusters: cluster-wide NAP has been managing pool c
 |----------|-----------|------------|--------------|
 | **Manual pools only** | Stable names (eligible for `nodepools: [...]` pinning); fast scheduling (no pool-creation latency) | Limited to pre-provisioned shapes; obtainability brittle on stockout | Latency-sensitive serving with stable shape; pools you need to inspect/manage by name |
 | **NAC only (CCC)** | Best obtainability — GKE tries multiple shapes; no idle pools when demand is zero | Pool-creation latency on each new shape; ephemeral pool names (no `nodepools: [...]` refs) | Bursty workloads; broad fallback chains; cost-sensitive batch |
-| **Hybrid (preferred)** | Manual pool at the top of the priority list for the fast path; NAC fallbacks below for obtainability | Slightly more to manage | Most production workloads — see Pattern 3 in [gke-compute-classes-optimize.md](./gke-compute-classes-optimize.md). If pending-pod latency on traffic spikes is also a concern, layer a [Capacity Buffer](./gke-node-autoscaling-optimize.md#capacity-buffers--pre-warm-capacity-for-faster-scale-up) on top of the hybrid CCC. |
+| **Hybrid (preferred)** | Manual pool at the top of the priority list for the fast path; NAC fallbacks below for obtainability | Slightly more to manage | Most production workloads — see Pattern 3 in [gke-compute-classes-optimize.md](./gke-compute-classes-optimize.md). If pending-pod latency on traffic spikes is also a concern, layer a [Capacity Buffer](./gke-cluster-autoscaling-optimize.md#capacity-buffers--pre-warm-capacity-for-faster-scale-up) on top of the hybrid CCC. |
 
 See the [create doc's NAC vs. manual section](./gke-compute-classes-create.md#nac-vs-manual-node-pools-provisioning-source) for the full comparison and the bind-with-label/taint pattern for manual pools.
 
@@ -187,7 +187,7 @@ Workloads opt in via `nodeSelector: cloud.google.com/compute-class: <name>` (or 
 
 ## Where to go next
 
-- Tuning the autoscaling profile, consolidation, location policy: [gke-node-autoscaling-optimize.md](./gke-node-autoscaling-optimize.md)
-- Pending pods, scale-up errors, NAP not creating a pool: [gke-node-autoscaling-debug.md](./gke-node-autoscaling-debug.md)
+- Tuning the autoscaling profile, consolidation, location policy: [gke-cluster-autoscaling-optimize.md](./gke-cluster-autoscaling-optimize.md)
+- Pending pods, scale-up errors, NAP not creating a pool: [gke-cluster-autoscaling-debug.md](./gke-cluster-autoscaling-debug.md)
 - ComputeClass authoring (priority lists, manual-pool binding): [gke-compute-classes-create.md](./gke-compute-classes-create.md)
 - Pod-level autoscaling (HPA, VPA): [gke-workload-autoscaling.md](./gke-workload-autoscaling.md)

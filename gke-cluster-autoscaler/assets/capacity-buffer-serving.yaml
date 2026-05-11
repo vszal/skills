@@ -2,7 +2,7 @@
 # bursty pods don't pay the NAC pool-creation latency on the fast path.
 #
 # Resource: autoscaling.x-k8s.io/v1beta1 CapacityBuffer (a CRD; kubectl-only,
-# no gcloud surface). See gke-node-autoscaling-optimize.md → Capacity Buffers.
+# no gcloud surface). See gke-cluster-autoscaling-optimize.md → Capacity Buffers.
 #
 # Provisioning strategies (set in spec.provisioningStrategy):
 #   buffer.x-k8s.io/active-capacity   default. Buffer pods are real, low-priority

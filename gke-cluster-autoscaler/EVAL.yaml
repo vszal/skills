@@ -50,3 +50,33 @@ cases:
   - "The response suggests using Capacity Buffers (autoscaling.x-k8s.io/v1beta1)."
   - "The response explains the 'active-capacity' vs 'standby-capacity' strategies."
   - "The response mentions that the buffer should match the target ComputeClass via a nodeSelector."
+
+- id: "gke_autoscaling_karpenter_migration"
+  prompt: "We are migrating from EKS using Karpenter with 'consolidateAfter: 30s'. How can I achieve similar sub-minute consolidation behavior in GKE ComputeClasses?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response correctly states that GKE's 'consolidationDelayMinutes' has a minimum floor of 1 minute."
+  - "The response identifies that sub-minute consolidation is not currently supported in GKE ComputeClasses."
+  - "The response suggests using 'consolidationThreshold: 0' for maximum aggression within that 1-minute limit."
+
+- id: "gke_autoscaling_blocker_local_ssd"
+  prompt: "My Spark pipeline pods use local SSDs for shuffle data. After the jobs finish, the nodes stay idle and aren't being removed. What is likely blocking scale-down?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies pods with local storage (local SSD, emptyDir, hostPath) as primary scale-down blockers."
+  - "The response suggests checking for other blockers like 'safe-to-evict: false' or bare pods."
+  - "The response recommends using 'assets/find-scale-down-blockers.sh' to diagnose the specific pods."
+
+- id: "gke_autoscaling_per_class_tuning"
+  prompt: "How can I configure my cluster so that batch workloads consolidate aggressively to save costs, while serving workloads keep a bit of spare capacity to avoid pending pods on spikes?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends using per-class 'autoscalingPolicy' in ComputeClasses."
+  - "For batch: suggest 'consolidationThreshold: 0' and short 'consolidationDelayMinutes: 1'."
+  - "For serving: suggest leaving thresholds at default/low, increasing 'consolidationDelayMinutes' (5-10), or using Capacity Buffers."

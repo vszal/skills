@@ -1,6 +1,6 @@
 # GKE Node Autoscaling: Optimize
 
-Tuning node autoscaling for cost, latency, or obtainability: the cluster-wide autoscaling profile, per-class consolidation thresholds and delay (CCC `autoscalingPolicy`), and zone-distribution policy. For enabling CA / NAP / NAC see [gke-node-autoscaling-enable.md](./gke-node-autoscaling-enable.md). For triage when scaling misbehaves see [gke-node-autoscaling-debug.md](./gke-node-autoscaling-debug.md).
+Tuning node autoscaling for cost, latency, or obtainability: the cluster-wide autoscaling profile, per-class consolidation thresholds and delay (CCC `autoscalingPolicy`), and zone-distribution policy. For enabling CA / NAP / NAC see [gke-cluster-autoscaling-enable.md](./gke-cluster-autoscaling-enable.md). For triage when scaling misbehaves see [gke-cluster-autoscaling-debug.md](./gke-cluster-autoscaling-debug.md).
 
 > **MCP tools:** `update_cluster`, `update_node_pool`
 
@@ -116,7 +116,7 @@ The disruption-controls callout above covers the two intentional knobs. Several 
 - **Pod anti-affinity / topology spread that pins to that node.** If the rule can't be satisfied elsewhere, the pod can't move.
 - **`kube-system` pods without a PDB.** Some are CA-protected by default; others are skipped because moving them would cascade.
 
-**Implication:** if you're tuning for low idle cost but a few of these pods sit on every node, your effective consolidation rate drops to the underlying churn of those pods. The [debug doc](./gke-node-autoscaling-debug.md#scale-down-isnt-happening) has commands to find offenders.
+**Implication:** if you're tuning for low idle cost but a few of these pods sit on every node, your effective consolidation rate drops to the underlying churn of those pods. The [debug doc](./gke-cluster-autoscaling-debug.md#scale-down-isnt-happening) has commands to find offenders.
 
 ## Capacity Buffers — pre-warm capacity for faster scale-up
 
@@ -178,6 +178,8 @@ spec:
 - Pre-warming GPU/TPU capacity ahead of a known traffic window.
 - Workloads where NAC pool-creation latency is unacceptable on the fast path.
 
+> **Unified strategy for serving: Buffer + Delay.** For high-availability serving, use Capacity Buffers to handle the *initial* spike and set a longer `consolidationDelayMinutes` (5–15 min) to keep that capacity alive during brief traffic dips. This prevents "thrashing" where the autoscaler removes a node only to have to re-provision it (and wait for NAC) a few minutes later when the next burst arrives.
+
 **When not to use:**
 - Steady-state workloads — you'd be paying for idle capacity that consolidation would otherwise reclaim.
 - Pod-billed clusters — Capacity Buffers require node-based billing.
@@ -197,7 +199,7 @@ For details on the broader CCC update model see [gke-compute-classes-optimize.md
 
 ## Where to go next
 
-- Enable cluster autoscaler / NAP / NAC, choose manual vs. NAC vs. hybrid: [gke-node-autoscaling-enable.md](./gke-node-autoscaling-enable.md)
-- Pending pods, scale-up errors, scale-down not happening: [gke-node-autoscaling-debug.md](./gke-node-autoscaling-debug.md)
+- Enable cluster autoscaler / NAP / NAC, choose manual vs. NAC vs. hybrid: [gke-cluster-autoscaling-enable.md](./gke-cluster-autoscaling-enable.md)
+- Pending pods, scale-up errors, scale-down not happening: [gke-cluster-autoscaling-debug.md](./gke-cluster-autoscaling-debug.md)
 - Priority list design, fallback patterns, FlexCUDs, accelerator obtainability: [gke-compute-classes-optimize.md](./gke-compute-classes-optimize.md)
 - Karpenter → CCC concept mapping (drift, weight, consolidation): [gke-compute-classes-karpenter-migration.md](./gke-compute-classes-karpenter-migration.md)

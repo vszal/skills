@@ -1,6 +1,6 @@
 # GKE Node Autoscaling: Debug
 
-Triage when node autoscaling doesn't behave as expected: pending pods, scale-up failures, scale-down stalls, NAP not creating a pool. For enabling autoscaling see [gke-node-autoscaling-enable.md](./gke-node-autoscaling-enable.md); for tuning the profile and consolidation see [gke-node-autoscaling-optimize.md](./gke-node-autoscaling-optimize.md). For CCC-specific issues (status conditions, priority traversal, sysctl/kubelet allowlist failures) see [gke-compute-classes-debug.md](./gke-compute-classes-debug.md).
+Triage when node autoscaling doesn't behave as expected: pending pods, scale-up failures, scale-down stalls, NAP not creating a pool. For enabling autoscaling see [gke-cluster-autoscaling-enable.md](./gke-cluster-autoscaling-enable.md); for tuning the profile and consolidation see [gke-cluster-autoscaling-optimize.md](./gke-cluster-autoscaling-optimize.md). For CCC-specific issues (status conditions, priority traversal, sysctl/kubelet allowlist failures) see [gke-compute-classes-debug.md](./gke-compute-classes-debug.md).
 
 ## First stop: cluster autoscaler visibility logs
 
@@ -94,7 +94,7 @@ For a one-shot scan of the four most common workload-side blockers (`safe-to-evi
 - **Bare pods** (no controller). Same query without the annotation filter; check `ownerReferences`.
 - **Pods with local storage** (emptyDir-on-local-SSD or hostPath PVCs).
 - **PDB blocks eviction.** `kubectl get pdb -A` and check `currentHealthy`/`disruptionsAllowed`.
-- **`consolidationThreshold`** too high to ever match — if nodes hover at 60% utilization but threshold is 50%, they'll never become candidates. See [optimize doc](./gke-node-autoscaling-optimize.md).
+- **`consolidationThreshold`** too high to ever match — if nodes hover at 60% utilization but threshold is 50%, they'll never become candidates. See [optimize doc](./gke-cluster-autoscaling-optimize.md).
 - **`consolidationDelayMinutes`** very long — if delay is 30 min and nodes only stay underutilized for 20 min between bursts, scale-down never fires. Check the pattern in [Cloud Monitoring](./gke-observability.md) before lowering.
 - **Maintenance window?** ⚠ This is a *common false belief* — maintenance windows do **not** gate consolidation. They only scope upgrades and node auto-repair. If you actually need time-windowed consolidation suppression, gate at the workload layer with a scheduled PDB tightening.
 - **`min-nodes` / `total-min-nodes` > 0** on the pool — autoscaler won't drop below the floor.
@@ -276,7 +276,7 @@ kubectl describe pod <name> -n <ns>
 
 ## Where to go next
 
-- Enable CA / NAP / NAC, golden-path defaults: [gke-node-autoscaling-enable.md](./gke-node-autoscaling-enable.md)
-- Tune autoscaling profile, consolidation thresholds, location policy: [gke-node-autoscaling-optimize.md](./gke-node-autoscaling-optimize.md)
+- Enable CA / NAP / NAC, golden-path defaults: [gke-cluster-autoscaling-enable.md](./gke-cluster-autoscaling-enable.md)
+- Tune autoscaling profile, consolidation thresholds, location policy: [gke-cluster-autoscaling-optimize.md](./gke-cluster-autoscaling-optimize.md)
 - CCC-specific: status.conditions, sysctl/kubelet allowlist, version gating, disk-gen mismatch: [gke-compute-classes-debug.md](./gke-compute-classes-debug.md)
 - Pod-level autoscaling debug (HPA not scaling, VPA recommendations): [gke-workload-autoscaling.md](./gke-workload-autoscaling.md)

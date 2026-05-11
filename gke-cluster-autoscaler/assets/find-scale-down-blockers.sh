@@ -10,7 +10,7 @@
 # Reads the current kube context. Run after `gcloud container clusters
 # get-credentials` for the target cluster.
 #
-# See gke-node-autoscaling-debug.md → "Scale-down isn't happening".
+# See gke-cluster-autoscaling-debug.md → "Scale-down isn't happening".
 #
 # Requires: kubectl, jq.
 
