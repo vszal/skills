@@ -33,7 +33,7 @@ If the user pins to a single family, suggest comparable substitutes. If they spe
 | **CPU** | ❌ Bad — if On-Demand is exhausted in a zone, Spot is too. | n/a |
 | **Accelerator** | ⚠️ Limited use | ✅ Reasonable — Spot can fill in even when On-Demand isn't available |
 
-- **Accelerator chip fungibility:** Tuned AI/ML models usually don't port across chip architectures. Vary on **location** and **capacity type** instead. Chip-level fungibility is only safe for small models / tolerant ML jobs.
+- **Accelerator chip fungibility & mixed architectures:** Fallback between different chip architectures (e.g., TPU to GPU, or AMD Instinct to NVIDIA) is dangerous. It requires that the workload's PodSpec can handle vastly different infrastructural realities: multi-architecture container images, conflicting driver requirements (CUDA vs. JAX/XLA), and different entrypoints. Only use mixed-accelerator fallbacks for highly tolerant workloads where the runtime can dynamically detect the available hardware and load the appropriate stack. Otherwise, vary on **location** and **capacity type** instead.
 - **Spot sizing:** Smaller shapes are more obtainable as Spot and less likely to be preempted.
 
 ### Bin packing & sizing

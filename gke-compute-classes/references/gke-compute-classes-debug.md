@@ -58,6 +58,24 @@ Inspect `resultInfo.results.errorMsg.messageId` — it tells you exactly which M
 | `scale.up.error.ip.space.exhausted` | Subnet IP exhaustion | Expand subnet / secondary range |
 | `scale.up.no.scale.up` | No priority matched | Check `whenUnsatisfiable` and pod requests |
 
+**Example of a Stockout log payload:**
+When a `scale.up.error.out.of.resources` occurs, the JSON payload in Cloud Logging will look similar to this, indicating which priority failed:
+```json
+{
+  "resultInfo": {
+    "results": [
+      {
+        "errorMsg": {
+          "messageId": "scale.up.error.out.of.resources",
+          "parameters": ["ZONE_RESOURCE_POOL_EXHAUSTED"]
+        },
+        "nodePool": "nap-c3-spot-1234abcd"
+      }
+    ]
+  }
+}
+```
+
 For a continuous live tail of all autoscaler decisions — successful scale-ups, NAP node-pool creations, scale-downs, plus failures (`resultInfo.results.errorMsg`) and stalls (`noDecisionStatus.noScaleUp` / `noScaleDown`) — use [`assets/log-autoscaler-events.sh <cluster-name>`](../assets/log-autoscaler-events.sh). Polls every 10s, scopes the filter to one cluster, color-prints to terminal. Add `--errors-only` (or `-e`) to suppress successes, and `--log-file PATH` (or `-o PATH`) to also append plain text to a file. Requires `gcloud` and `jq`. Useful when you're watching a CCC roll out and want decisions surfaced as they happen.
 
 Also check standard Kubernetes events:
