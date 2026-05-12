@@ -22,3 +22,8 @@ priorities:
   location:
     locationPolicy: ANY # Spot preference
 ```
+
+## Resource CUDs vs. Reservations
+Understanding how cost savings apply to autoscaled capacity:
+- **Committed Use Discounts (CUDs):** Automatically consumed by the Cluster Autoscaler. When the autoscaler provisions a node of a specific machine family (e.g., `n4`), it automatically consumes any available CUD for that family up to exhaustion. No explicit autoscaler, NAP, or CCC configuration is needed.
+- **Reservations:** Unlike CUDs, capacity reservations are **not** automatically consumed. They must be explicitly targeted. You must configure consumption via the Node Pool API (for standard/manual pools) or via a ComputeClass `reservations` block (for Node Auto-Creation / NAC).
