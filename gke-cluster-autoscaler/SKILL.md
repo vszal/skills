@@ -1,13 +1,13 @@
 ---
 name: gke-cluster-autoscaler
-description: Manage and troubleshoot GKE node autoscaling (CA, NAP, NAC).
+description: Manage and troubleshoot GKE node autoscaling (Cluster Autoscaler, NAP, and NAC via ComputeClass). Use for enabling autoscaling, tuning consolidation/location policies, and debugging pending pods or scale-down stalls.
 ---
 
 # GKE Cluster Autoscaler
 
-Manage node-level scaling for GKE clusters.
+Manage node-level scaling for GKE clusters, including standard Cluster Autoscaler (CA), Node Auto-Provisioning (NAP), and Node Pool Auto-Creation (NAC).
 
-## Cheat Sheet
+## Quick Reference
 
 | Task | Command / Configuration |
 |------|-------------------------|
@@ -20,18 +20,23 @@ Manage node-level scaling for GKE clusters.
 
 ## Reference Directory
 
-| Scenario | Trigger Keywords | Reference |
-|----------|-----------------|-----------|
-| **Enabling** | `gcloud` enable CA, turn on NAP, total node bounds | [ca-enable-scaling.md](./references/ca-enable-scaling.md) |
-| **Strategies** | manual vs NAC, hybrid strategy, cutover from NAP | [ca-provisioning-strategies.md](./references/ca-provisioning-strategies.md) |
-| **Profiles** | `balanced` vs `optimize-utilization`, zone policy (`ANY`) | [ca-optimization-profiles.md](./references/ca-optimization-profiles.md) |
-| **Consolidation** | `consolidationDelay`, `consolidationThreshold`, PDBs | [ca-consolidation-tuning.md](./references/ca-consolidation-tuning.md) |
-| **Pre-warming** | `CapacityBuffer` CRD, standby vs active capacity | [ca-capacity-buffers.md](./references/ca-capacity-buffers.md) |
-| **Debug: Scale-up** | `Pending` pods, visibility logs, `messageId` codes | [ca-debug-scale-up.md](./references/ca-debug-scale-up.md) |
-| **Debug: Scale-down** | `safe-to-evict`, scale-down blockers, system pod drift | [ca-debug-scale-down.md](./references/ca-debug-scale-down.md) |
-| **Debug: Speed** | sluggish scaling, pool count creep (>200), Spot grace | [ca-debug-performance.md](./references/ca-debug-performance.md) |
+| Topic | Reference | Description |
+|-------|-----------|-------------|
+| **Provisioning** | [ca-provisioning.md](./references/ca-provisioning.md) | Enabling CA, NAP, and NAC; cutover strategies; hybrid pools. |
+| **Optimization** | [ca-optimization.md](./references/ca-optimization.md) | Profiles (`balanced` vs `optimize-utilization`), Location Policies, and Consolidation tuning. |
+| **Debug & Perf** | [ca-debug.md](./references/ca-debug.md) | Visibility logs, scale-up/down blockers, performance bottlenecks, and system pod segregation. |
+| **Pre-warming** | [ca-capacity-buffers.md](./references/ca-capacity-buffers.md) | Using the `CapacityBuffer` CRD for standby capacity and HPA headroom. |
 
 ## Assets
-- [Scale-down Blocker Scan](./assets/find-scale-down-blockers.sh)
-- [Autoscaler Log Tail](./assets/log-autoscaler-events.sh)
-- [Capacity Buffer Serving](./assets/capacity-buffer-serving.yaml)
+
+### [Autoscaler Log Tailer](./assets/log-autoscaler-events.sh)
+Continuous live tail of all autoscaler decisions (scale-ups, NAC creations, failures, and stalls).
+- **Usage:** `./assets/log-autoscaler-events.sh <cluster-name>`
+- **Requires:** `roles/logging.viewer` and `gcloud`, `jq`.
+
+### [Scale-down Blocker Scan](./assets/find-scale-down-blockers.sh)
+One-shot scan for workload-side blockers (`safe-to-evict: false`, bare pods, local storage, tight PDBs).
+- **Usage:** `./assets/find-scale-down-blockers.sh [-n namespace]`
+
+### [Capacity Buffer Template](./assets/capacity-buffer-serving.yaml)
+Example `CapacityBuffer` for serving workloads to ensure zero-pending-pod scaling.
