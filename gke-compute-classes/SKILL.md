@@ -11,6 +11,8 @@ description: "GKE ComputeClasses (CCC): Priority-based node provisioning (NAC vs
 
 Decouple Pod requirements from infra implementation. Use for: Autopilot, Standard with NAC, or prioritized manual pools.
 
+**Requirements:** GA features require GKE 1.31+. `priorityScore` requires GKE 1.35.2-gke.1842000+.
+
 ## Cheat Sheet
 
 ```yaml
@@ -43,12 +45,12 @@ spec:
 |----------|-----------------|-----------|
 | **Fields & Spec** | YAML shape, `priorities`, `nodePoolConfig`, `priorityScore`, `autoscalingPolicy` | [ccc-crd-fields.md](./references/ccc-crd-fields.md) |
 | **Binding & Provisioning** | NAC setup, manual pool binding, intent-based vs strict | [ccc-provisioning-methods.md](./references/ccc-provisioning-methods.md) |
-| **Priority Logic** | traversal order, tie-breaking, limits (~10), Score rules | [ccc-priority-logic.md](./references/ccc-priority-logic.md) |
-| **Fallback Patterns** | GPU/TPU obtainability, Spot vs OD, Training vs Inference | [ccc-fallback-patterns.md](./references/ccc-fallback-patterns.md) |
+| **Prioritization & Fallbacks** | traversal order, limits, GPU/TPU patterns, Spot/OD fallbacks | [ccc-prioritization.md](./references/ccc-prioritization.md) |
+| **Cost Optimization** | FlexCUD alignment, Spot vs OD tiering | [ccc-cost-optimization.md](./references/ccc-cost-optimization.md) |
 | **Lifecycle & Updates** | consolidation (scale-down), drift, activeMigration, update behavior | [ccc-lifecycle.md](./references/ccc-lifecycle.md) |
-| **Gotchas & CUDs** | DWS, disk generation (Hyperdisk), `AnyBestEffort`, FlexCUDs | [ccc-gotchas-and-cuds.md](./references/ccc-gotchas-and-cuds.md) |
-| **Migrations** | Karpenter to CCC, NodePool mapping, weight translation | [migration.md](./references/gke-compute-classes-karpenter-migration.md) |
-| **Debugging** | scale-up failure, stockout, event logs, pending pods | [debug.md](./references/gke-compute-classes-debug.md) |
+| **Gotchas & CUDs** | DWS, disk generation, Service Mesh, `AnyBestEffort`, FlexCUDs | [ccc-gotchas-and-cuds.md](./references/ccc-gotchas-and-cuds.md) |
+| **Migrations** | Karpenter to CCC, NodePool mapping, weight translation | [ccc-karpenter-migration.md](./references/ccc-karpenter-migration.md) |
+| **Debugging** | scale-up failure, stockout, event logs, pending pods | [ccc-debug.md](./references/ccc-debug.md) |
 
 ## Core Patterns
 1. **GPU/TPU:** `Reservation -> DWS FlexStart -> On-Demand -> Spot` (Training).

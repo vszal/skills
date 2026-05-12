@@ -57,6 +57,12 @@ for cmd in gcloud jq; do
   fi
 done
 
+# Verify permissions before starting
+echo "Verifying permissions..."
+if ! gcloud projects get-iam-policy $(gcloud config get-value project) --flatten="bindings[].members" --format="table(bindings.role)" --filter="bindings.members:$(gcloud config get-value account)" | grep -q "roles/logging.viewer\|roles/owner\|roles/editor"; then
+  echo "Warning: You may not have 'roles/logging.viewer' permissions in this project. The tail may fail silently." >&2
+fi
+
 POLL_INTERVAL_SECS=10
 [[ -n "$LOG_FILE" ]] && touch "$LOG_FILE"
 

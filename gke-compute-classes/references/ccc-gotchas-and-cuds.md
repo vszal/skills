@@ -24,3 +24,7 @@ GKE allows only specific `sysctls` and `kubeletConfig` fields.
 - **Check CRD:** `kubectl describe crd computeclasses.cloud.google.com` for the authoritative allowlist.
 - **Symptoms:** Unsupported keys show up in `status.conditions`.
 - **Version Gating:** Many fields (e.g. `singleProcessOOMKill`) require 1.33+ or 1.34+.
+
+## Service Mesh / Networking Nuances
+- Nodes provisioned by ComputeClasses (especially via NAC) must be compatible with existing network policies or service mesh (e.g., Anthos/Istio) sidecar requirements.
+- Ensure any required taints or labels for mesh injection or network traffic routing are included in the `nodePoolConfig`.
