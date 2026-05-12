@@ -13,11 +13,13 @@
 - **DWS FlexStart:** Queued (~3 min). `maxRunDurationSeconds` doesn't help obtainability.
 - **CCC ≠ Full Node API:** NAC doesn't support every `gcloud node-pools create` flag. If missing, use a **Manual Pool** bound to the CCC.
 
-## Flexible CUDs (FlexCUDs)
-- **Portable:** Discount follows whichever family the CCC picks.
-- **Coverage:** vCPU/Memory on most families (C3, N2, N4, etc.).
-- **Exclusions:** GPUs, TPUs, Hyperdisk, Spot.
-- **Strategy:** Leverage FlexCUDs for the **On-Demand floor** of your CCC.
+## CUDs vs. Reservations
+- **Committed Use Discounts (CUDs):**
+  - **Automatic Consumption:** GKE cluster autoscaler automatically consumes CUDs based on the machine family of the node provisioned. If you have an `n4` CUD, provisioning an `n4` VM automatically consumes the discount up to exhaustion.
+  - **No Configuration Required:** A ComputeClass does **not** need to be specifically configured to consume CUDs. Consumption is implicit.
+  - **Flexible CUDs (FlexCUDs):** Portable across most families (C3, N2, N4). The discount follows whichever family the CCC provisions for the On-Demand floor.
+- **Reservations:**
+  - **Explicit Configuration Required:** Unlike CUDs, capacity reservations are **not** automatically consumed. They must be explicitly configured and targeted via the Node Pool API (for manual pools) or within the CCC `reservations` block (for NAC).
 
 ## System Configuration Allowlist
 GKE allows only specific `sysctls` and `kubeletConfig` fields.
