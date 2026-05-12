@@ -56,5 +56,8 @@ spec:
 3. **Latency:** `Manual Pool (Pre-warmed) -> NAC (Dynamic Fallback)`.
 
 ## Assets
+
+> **Agent Instruction:** When copying or adapting any of these assets, you MUST ask the user which Google Cloud region and zone(s) they want to deploy into. Do not blindly copy the hardcoded `us-central1` zones from the examples into user environments without confirmation.
+
 - [L4 Inference](./assets/genai-inference-g4-compute-class.yaml) | [TPU Training](./assets/tpu-v5e-training-compute-class.yaml)
 - [Postgres Tuning](./assets/postgres-primary-compute-class.yaml) | [Spot Tie-break](./assets/spot-cost-tiebreak-compute-class.yaml)
