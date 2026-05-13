@@ -1,0 +1,48 @@
+# Cross-Namespace VolumeSnapshot Restoration
+# This template demonstrates "Static Provisioning" to restore a snapshot from 'prod' to 'staging'.
+
+# 1. VolumeSnapshotContent (Cluster-scoped)
+# Point this to the existing GCP snapshot handle.
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotContent
+metadata:
+  name: cross-namespace-restore-content
+spec:
+  deletionPolicy: Retain
+  driver: pd.csi.storage.gke.io
+  source:
+    # Handle format: projects/<project>/global/snapshots/<snapshot-name>
+    snapshotHandle: projects/my-project/global/snapshots/prod-db-snapshot-v1
+  volumeSnapshotRef:
+    name: staging-db-snapshot
+    namespace: staging
+---
+# 2. VolumeSnapshot ('staging' namespace)
+# Create the handle that the PVC will reference.
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: staging-db-snapshot
+  namespace: staging
+spec:
+  source:
+    volumeSnapshotContentName: cross-namespace-restore-content
+---
+# 3. PersistentVolumeClaim ('staging' namespace)
+# Create the PVC to restore the disk.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: restored-db-pvc
+  namespace: staging
+spec:
+  dataSource:
+    name: staging-db-snapshot
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi # Must be >= source snapshot size
+  storageClassName: premium-rwo

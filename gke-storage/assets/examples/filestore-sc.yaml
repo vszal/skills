@@ -1,0 +1,24 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: filestore-multishare-sc
+provisioner: filestore.csi.storage.gke.io
+parameters:
+  tier: enterprise
+  network: default
+  # To use Multi-shares, set 'multishare: "true"' or provide an existing instance.
+  multishare: "true"
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: share-1-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: filestore-multishare-sc
+  resources:
+    requests:
+      storage: 10Gi # Min 10GiB for Multi-shares
