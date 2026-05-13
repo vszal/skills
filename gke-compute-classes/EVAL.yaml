@@ -52,3 +52,39 @@ cases:
   - "The response mentions using 'machineFamily: n4' or similar performance-optimized families."
   - "The response suggests configuring boot disk types (e.g., hyperdisk-balanced) to match performance needs."
   - "The response mentions binding the CCC to a manual node pool if zero-latency scheduling is required."
+
+- id: "gke_compute_class_gpu_toleration"
+  prompt: "I created a ComputeClass for L4 GPUs and assigned it to my Pod via nodeSelector, but it's stuck in Pending. The autoscaler logs show 'noScaleUp'. The node pool creates successfully if I do it manually. What is missing in my Pod spec?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies that the Pod is missing the `nvidia.com/gpu: Exists` toleration."
+  - "The response explains that GKE auto-taints GPU nodes, so the toleration is required for scheduling."
+
+- id: "gke_compute_class_scaleupanyway_fallback"
+  prompt: "My ComputeClass has priorities for C3 and N4 nodes, but GKE is creating E2 nodes instead. Why is this happening and how do I strictly enforce my machine families?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies that `whenUnsatisfiable: ScaleUpAnyway` causes GKE to fallback to E2 nodes."
+  - "The response recommends changing `whenUnsatisfiable` to `DoNotScaleUp` to strictly enforce the requested machine families."
+
+- id: "gke_compute_class_active_migration_blocked"
+  prompt: "I enabled `activeMigration: { optimizeRulePriority: true }` to move from On-Demand back to Spot. I see Spot capacity is available, but my Pods are still on On-Demand nodes. What could be preventing the migration?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies Pod Disruption Budgets (PDBs) as the likely blocker."
+  - "The response explains that active migration respects PDBs and will not evict if it violates the budget."
+
+- id: "gke_compute_class_imagetype_bug"
+  prompt: "After adding `imageType: UBUNTU_CONTAINERD` to my ComputeClass, the autoscaler started creating hundreds of tiny, fragmented node pools. We are on GKE 1.33.4. What's wrong?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies a known bug in pre-1.33.5 where ImageType causes excessive node pool creation."
+  - "The response recommends upgrading the GKE version or removing the `imageType` field."
