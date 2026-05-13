@@ -31,3 +31,43 @@ cases:
   - "The response identifies common causes like zonal mismatch, multi-attach errors (disk stuck on old node), or node volume limits."
   - "The response suggests checking CSI driver logs (e.g., gce-pd-driver) in the `kube-system` namespace."
   - "The response recommends architectural solutions like `volumeBindingMode: WaitForFirstConsumer` or using Regional PD."
+
+- id: "pvc-pending-waitforfirstconsumer"
+  prompt: "I created a PVC using the premium-rwo StorageClass, but it's stuck in the Pending state. I don't see any error events on the PVC. Why isn't it provisioning?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies that premium-rwo uses volumeBindingMode: WaitForFirstConsumer."
+  - "The response explains this is expected behavior and not an error."
+  - "The response instructs the user to deploy a Pod that references the PVC to trigger provisioning."
+
+- id: "pv-stuck-terminating"
+  prompt: "I'm trying to clean up an old deployment. I deleted the PVC, but the PersistentVolume is stuck in a 'Terminating' state for hours. How do I force delete it safely?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies the kubernetes.io/pv-protection finalizer as the cause."
+  - "The response explains that the finalizer prevents data loss while a Pod is still using the volume."
+  - "The response instructs the user to find and delete the Pod referencing the PVC to allow clean eviction."
+
+- id: "boot-disk-iops-throttling"
+  prompt: "Our machine learning pipeline uses emptyDir mounts for temporary scratch space. Recently, the entire node has been slowing down drastically when the pipeline runs, even though CPU and Memory are fine. What storage issue could cause this?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies that emptyDir mounts use the node's boot disk."
+  - "The response explains that heavy I/O on emptyDir consumes the boot disk's IOPS, throttling the node."
+  - "The response recommends using local SSDs or a dedicated Persistent Disk for high-I/O scratch space."
+
+- id: "rwx-invalid-volume-capabilities"
+  prompt: "I'm getting a 'VolumeCapabilities is invalid: specified multi writer with mount access type' error when applying my PVC. The YAML specifies storageClassName: standard-rwo and accessModes: [ReadWriteMany]. What is wrong?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response points out the conflict between ReadWriteMany and the standard-rwo StorageClass."
+  - "The response explicitly states that standard GCE Persistent Disks only support ReadWriteOnce."
+  - "The response recommends switching to Filestore or Hyperdisk Multi-zone for multi-writer access."
