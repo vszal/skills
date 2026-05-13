@@ -1,59 +1,32 @@
 ---
 name: gke-storage
-description: Comprehensive guide for GKE storage topics, including StorageClasses, PVCs, performance vs cost trade-offs, and best practices. Use this skill when the user asks about persistent storage, shared file systems, mounting buckets, or optimizing storage performance and costs on GKE.
+description: Expert guide for GKE storage (PD, Hyperdisk, Filestore, GCS FUSE). Use for StorageClasses, PVCs, performance tuning, cost optimization, and high availability (Regional PD, Backup for GKE).
 ---
 
 # GKE Storage Skill
 
-Expert guidance on selecting, configuring, and troubleshooting storage in Google Kubernetes Engine.
+Guidance on selecting, configuring, and troubleshooting storage in Google Kubernetes Engine.
 
-## Core Concepts
+## Core Architecture
+GKE storage uses CSI drivers to provision Google Cloud resources via Kubernetes `StorageClasses` and `PersistentVolumeClaims` (PVCs).
 
-GKE storage is managed primarily through the Container Storage Interface (CSI) drivers, which allow for dynamic provisioning of Google Cloud storage resources using Kubernetes native objects like `StorageClasses` and `PersistentVolumeClaims` (PVCs).
+### Reference Guides
+- [Storage Selection & Compatibility](./references/selection.md): Choose the right type and check VM compatibility.
+- [Block Storage (PD & Hyperdisk)](./references/block-storage.md): Zonal/Regional PD, Hyperdisk tiers, and Storage Pools.
+- [Shared Storage (Filestore & GCS FUSE)](./references/shared-storage.md): `ReadWriteMany` options, multi-shares, and PSC networking.
+- [PVCs, Snapshots & Operations](./references/volume-management.md): PVC/SC syntax, resizing, cloning, and cross-namespace restore.
+- [Security & Encryption](./references/security.md): CMEK, IAM requirements, and encryption best practices.
+- [Performance & Cost Optimization](./references/performance-cost.md): IOPS/Throughput scaling, `fsGroup` tuning, and cost matrix.
+- [Autopilot Storage](./references/autopilot.md): Constraints and configuration for Autopilot clusters.
+- [Observability, Debugging & DR](./references/observability-debug-dr.md): Metrics, logging, troubleshooting, and Backup for GKE.
 
-### Quick Navigation
-- [Storage Options & Selection](./references/storage-options.md): Choose between Block (PD/Hyperdisk), File (Filestore), and Object (GCS FUSE) storage.
-- [Performance & Cost Trade-offs](./references/performance-cost.md): Optimize for IOPS, throughput, and budget.
-- [PVCs and StorageClasses](./references/pvcs-storageclasses.md): Configuration, dynamic provisioning, and volume management.
-- [Observability & Debugging](./references/observability-debugging.md): Monitoring health and troubleshooting common issues.
+## Quick Implementation
+1. **Select Type:** [Selection Guide](./references/selection.md).
+2. **Configure:** Define a [StorageClass](./references/volume-management.md). See [Examples](./assets/examples/).
+3. **Deploy:** Reference a PVC in your Pod spec.
 
-## Implementation Guide
-
-### 1. Select the Right Storage Type
-- **Standard Apps:** Use **Balanced Persistent Disk** (default).
-- **High-Performance DBs:** Use **Performance PD** or **Hyperdisk Extreme**.
-- **Shared Storage (RWX):** Use **Filestore** or **Cloud Storage FUSE**.
-- **Ephemeral/Cache:** Use **Local SSD**.
-
-### 2. Configure StorageClasses
-Define your requirements in a `StorageClass` to automate provisioning. 
-See [Example Configurations](./assets/examples/).
-
-### 3. Use PersistentVolumeClaims
-Pods request storage by referencing a PVC.
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: my-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 50Gi
-  storageClassName: premium-rwo
-```
-
-## Best Practices
-- **High Availability:** Use **Regional Persistent Disks** for critical stateful workloads to protect against zonal failures.
-- **Cost Efficiency:** Use **Filestore Multi-shares** for multiple small `ReadWriteMany` volumes.
-- **Scaling:** Remember that PD performance scales with disk size and node vCPU count.
-- **Backup:** Implement **Volume Snapshots** via the GKE CSI driver.
-
-## Debugging Workflow
+## Troubleshooting Workflow
 1. Check PVC status: `kubectl get pvc`
-2. Describe PVC for events: `kubectl describe pvc <name>`
-3. Check CSI driver logs in the `kube-system` namespace.
-4. Verify VM attach limits and machine type compatibility.
-Detailed guide: [Observability & Debugging](./references/observability-debugging.md)
+2. Inspect events: `kubectl describe pvc <name>`
+3. Analyze [Common Issues](./references/observability-debug-dr.md).
+4. Query [CSI Logs](./assets/debug-storage-logs.sh) via Cloud Logging.
