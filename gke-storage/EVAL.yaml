@@ -1,0 +1,33 @@
+cases:
+- id: "postgresql-ha-storage"
+  prompt: "I need to set up a PostgreSQL database on GKE. What storage option should I use and how do I configure it for high availability?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends Performance PD (pd-ssd) or Balanced PD (pd-balanced)."
+  - "The response explicitly mentions Regional Persistent Disks (regional-pd) for high availability."
+  - "The response includes a StorageClass example with replication-type: regional-pd."
+  - "The response suggests using StatefulSets for the database to maintain stable identity and storage attachment."
+
+- id: "shared-config-rwx"
+  prompt: "My application needs to share a configuration file between multiple pods. What's the best way to do this on GKE, and what are the cost implications?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies Filestore or GCS FUSE as shared storage (RWX) options."
+  - "The response explains that standard Persistent Disks are ReadWriteOnce (RWO) only and cannot be shared across nodes in RW mode."
+  - "The response explains cost implications, such as Filestore's 1 TiB minimum for basic tiers or GCS operation costs."
+  - "The response mentions Filestore Enterprise Multi-shares as a cost-saving option for small volumes (down to 10 GiB)."
+
+- id: "debug-failed-attach"
+  prompt: "I'm seeing `FailedAttachVolume` errors for my stateful set pods. How can I debug this?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response suggests checking `kubectl describe` for pods and PVCs to identify the failure event."
+  - "The response identifies common causes like zonal mismatch, multi-attach errors (disk stuck on old node), or node volume limits."
+  - "The response suggests checking CSI driver logs (e.g., gce-pd-driver) in the `kube-system` namespace."
+  - "The response recommends architectural solutions like `volumeBindingMode: WaitForFirstConsumer` or using Regional PD."
