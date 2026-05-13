@@ -2,8 +2,8 @@
 
 [![Install via skills.sh](https://img.shields.io/badge/skills.sh-install-green)](https://skills.sh/vszal/skills)
 
-This repository contains [Agent Skills](https://agentskills.io/home) for GKE feature I'm working on and adjacent to. This is not an official repo but more for development and honing of skills. 
-Use the [Google skills repo](https://github.com/google/skills) as the official source of agent skill.s
+This repository contains experimental [Agent Skills](https://agentskills.io/home) for GKE features like ComputeClasses. This is not an official Google repo. 
+Use the [Google skills repo](https://github.com/google/skills) for more stable verions.
 
 > [!NOTE]
 > This repository is under active development.
