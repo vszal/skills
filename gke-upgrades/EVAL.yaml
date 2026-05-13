@@ -1,0 +1,90 @@
+cases:
+- id: "deprecation-blocking-webhook"
+  prompt: "We attempted a GKE minor version upgrade. The master upgrade was automatically paused by GKE. We checked the console and it says it's blocked due to usage of a deprecated API (v1beta1). We found an old OPA Gatekeeper ValidatingWebhookConfiguration is intercepting the kube-system namespace. How do we unblock this upgrade?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Recommends updating the webhook to exclude the kube-system namespace."
+  - "Mentions that GKE waits 30 days after the last deprecated call to automatically unpause."
+  - "Provides the gcloud command to manually trigger the upgrade and bypass the 30-day wait."
+
+- id: "stuck-surge-pdb-limit"
+  prompt: "Our surge node pool upgrade has been stuck for exactly 60 minutes. We have a Deployment with 1 replica and a PodDisruptionBudget with minAvailable: 1. Why is it stuck, what happened at the 60 minute mark, and how do we fix it permanently?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Explains that the 1 replica and minAvailable:1 PDB prevents the node from draining."
+  - "Explains that at the 60-minute mark, GKE forcefully evicts pods ignoring the PDB."
+  - "Recommends scaling the deployment to at least 2 replicas for a permanent fix."
+
+- id: "failed-blue-green-rollback"
+  prompt: "We are doing a Blue/Green node upgrade. The new green pool failed our health checks, so GKE initiated an automatic rollback to the blue pool. However, the rollback process itself has now failed during the soak phase. What are the most likely causes for this rollback failure according to best practices and limitations? If it's completely stuck, how do we manually force the rollback to finish?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Mentions PDB violations as a potential cause."
+  - "Mentions insufficient Compute Engine or IP quota as a potential cause."
+  - "Provides the gcloud container node-pools rollback command to manually force the rollback."
+
+- id: "autopilot-extended-duration"
+  prompt: "We are using GKE Autopilot. We have a long-running job that we've annotated with 'cloud.google.com/extended-duration'. We noticed that the node pool upgrade has been in a 'Draining' state for 3 days now. Is this expected behavior, how long will it stay like this, and is there any way to speed this up without killing the job?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Confirms this is expected behavior for GKE Autopilot."
+  - "Mentions that the extended-duration annotation delays upgrades for up to 7 days."
+  - "Mentions that maintenance windows and exclusions are the primary tools for controlling upgrade timing in Autopilot."
+
+- id: "sequencing-safety-throttles"
+  prompt: "We set up a Rollout Sequence for our Fleets (Staging -> Production). Staging finished its upgrades successfully. However, the Production group is now showing an 'INELIGIBLE' status. We checked and one of the Production clusters was manually upgraded to a newer patch version just 12 hours ago. Is this causing the ineligibility, and what are our options to fix the sequence?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Identifies the 24-hour safety throttle for patch upgrades as a potential cause."
+  - "Recommends running gcloud container fleet clusterupgrade describe --show-linked-cluster-upgrade to debug."
+  - "Suggests unblocking by manually upgrading the rest or removing the cluster from the fleet."
+
+- id: "gpu-quota-no-surge"
+  prompt: "We are trying to upgrade a node pool that uses NVIDIA A100 GPUs. We are using the default Surge upgrade strategy. The upgrade keeps failing with a 'Quota exceeded' error for A100 GPUs, even though we are only using 100% of our quota and haven't added any new workloads. Why is this happening and how should we configure the upgrade to succeed?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Explains that default surge requires additional quota because it creates extra nodes first."
+  - "Recommends using a No-Surge upgrade configuration."
+  - "Specifies setting maxSurge=0 and maxUnavailable=1."
+
+- id: "mixed-version-pause-resume"
+  prompt: "We have a 2-hour maintenance window for our production cluster on Saturday nights. On Monday morning, we noticed our node pool has nodes running two different GKE minor versions (e.g., 1.29 and 1.30). Is this a bug? What happened, and how do we manually finish the upgrade before next Saturday?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Identifies the cause as Maintenance Window Pausing."
+  - "Recommends against leaving the cluster in a mixed-version state for long periods."
+  - "Provides the gcloud command to manually resume the node pool upgrade."
+
+- id: "cni-networking-debug"
+  prompt: "We just finished a node upgrade. Our pods came back up, but some are experiencing intermittent network issues and FQDN policy failures when talking to external services. What could the upgrade have changed to cause this, and what specific command can we run to debug the networking components?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Attributes the issue to CNI/Dataplane V2 (Cilium) updates during the upgrade."
+  - "Provides the kubectl logs command for the cilium-agent (anetd) container."
+  - "Suggests checking for packet drops or identity sync errors in the logs."
+
+- id: "extended-channel-eol-tracking"
+  prompt: "We enrolled our cluster in the Extended release channel. Recently, GKE forcefully upgraded our cluster on a Tuesday afternoon. Why did this happen if we were on the Extended channel, and how could we have tracked this to avoid the surprise?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "Explains that Extended channel requires manual intervention to avoid forced EOL upgrades."
+  - "Recommends monitoring End of Support dates in the Console 'Cluster Basics' tab."
+  - "Suggests subscribing to GKE release notes via Pub/Sub for notifications."
