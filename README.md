@@ -19,7 +19,9 @@ repo to install.
 
 ## Available Skills
 
-- 📌 [**GKE ComputeClasses**](./gke-compute-classes) *(Experimental)*: Priority-based node provisioning and fallback management.
-- [**GKE Cluster Autoscaler**](./gke-cluster-autoscaler) *(Experimental)*: Optimization, consolidation tuning, and debugging pending pods.
-- [**GKE Storage**](./gke-storage) *(Experimental)*: Guidance on block, shared, and volume management for GKE.
-- [**GKE Upgrades**](./gke-upgrades) *(Experimental)*: Strategy, rollout sequencing, and troubleshooting for Control Plane and node upgrades.
+| Skill | Description | Maturity |
+| :--- | :--- | :--- |
+| [**GKE ComputeClasses**](./gke-compute-classes) | Priority-based node provisioning and fallback management. | *Experimental* |
+| [**GKE Cluster Autoscaler**](./gke-cluster-autoscaler) | Optimization, consolidation tuning, and debugging pending pods. | *Experimental* |
+| [**GKE Storage**](./gke-storage) | Guidance on block, shared, and volume management for GKE. | *Experimental* |
+| [**GKE Upgrades**](./gke-upgrades) | Strategy, rollout sequencing, and troubleshooting for Control Plane and node upgrades. | *Experimental* |
