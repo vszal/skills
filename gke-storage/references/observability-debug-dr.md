@@ -9,6 +9,7 @@ Monitoring health, fixing issues, and ensuring business continuity.
 ## Troubleshooting Common Issues
 - **FailedAttachVolume (Attach/Detach Thrashing):** Often caused by rapid StatefulSet rollouts or zonal mismatch. Disks can get stuck swapping between nodes waiting on the GCE controller. Check Pod events.
 - **Multi-Zone PV Affinity Conflicts:** A RWO Persistent Disk is tied to a single zone. If a PV is created in Zone A, but the Pod is rescheduled to Zone B due to compute constraints, the Pod will hang in `Pending` due to strict PV Node Affinity.
+  - **Workaround:** Cordon the node in Zone B (`kubectl cordon <node-name>`) and delete the stuck Pod. This forces the scheduler to place the replacement Pod in Zone A where the PV resides.
 - **VolumeCapabilities is Invalid:** Occurs when requesting `spec.accessModes: ReadWriteMany` on a standard GCE Persistent Disk (which only supports RWO). You must use Filestore or Hyperdisk Multi-zone for multi-writer access.
 - **FailedMount:** Check firewall rules (Filestore) or sidecar status (GCS FUSE).
 - **Expansion Pending:** Ensure Pod is `Running`; filesystem resize won't happen if Pod is stuck.
@@ -21,4 +22,5 @@ Monitoring health, fixing issues, and ensuring business continuity.
 
 ## CSI Driver Lifecycle
 - **Addon Status:** Ensure `GcePersistentDiskCsiDriver` is ENABLED. Missing default StorageClasses are often caused by this driver being disabled.
+  - **Fix:** `gcloud container clusters update [CLUSTER_NAME] --update-addons=GcePersistentDiskCsiDriver=ENABLED`
 - **Legacy Driver:** In-tree drivers (pre-v1.25) are removed; all storage must use CSI.
