@@ -1,0 +1,12 @@
+apiVersion: container.googleapis.com/v1
+kind: Cluster
+metadata:
+  name: surge-upgrade-cluster
+spec:
+  nodePools:
+  - name: default-pool
+    upgradeSettings:
+      strategy: SURGE
+      surgeSettings:
+        maxSurge: 2
+        maxUnavailable: 1

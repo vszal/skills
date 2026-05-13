@@ -1,0 +1,21 @@
+apiVersion: container.googleapis.com/v1
+kind: Cluster
+metadata:
+  name: upgrade-optimized-cluster
+spec:
+  releaseChannel:
+    channel: REGULAR
+  maintenancePolicy:
+    window:
+      dailyMaintenanceWindow:
+        startTime: "00:00"
+        duration: "4h"
+  nodePools:
+  - name: default-pool
+    upgradeSettings:
+      strategy: BLUE_GREEN
+      blueGreenSettings:
+        standardRolloutPolicy:
+          batchNodeCount: 1
+          batchSoakDuration: "600s"
+        nodePoolSoakDuration: "1800s"
