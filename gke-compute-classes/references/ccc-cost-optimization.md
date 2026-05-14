@@ -17,7 +17,7 @@ FlexCUDs provide predictable, high-value discounts in exchange for a commitment 
 
 ### Priority List Design
 When designing the `priorities[]` array for workloads that don't strictly require specialized hardware:
-1.  **Spot Tier (Highest Priority):** Attempt to provision Spot VMs first. Spot is cheaper than FlexCUD On-Demand but is not covered by CUDs. Use `priorityScore` to tie-break across multiple Spot families based on unit cost.
+1.  **Spot Tier (Highest Priority):** Attempt to provision Spot VMs first. Spot is cheaper than FlexCUD On-Demand but is not covered by CUDs. Use `priorityScore` to tie-break across multiple Spot families based on unit cost. (Note: You can assign the same score to a maximum of 3 rules).
 2.  **FlexCUD Tier (Middle Priority / Floor):** If Spot is unavailable, fall back to On-Demand families that are explicitly covered by your active FlexCUDs.
 3.  **General On-Demand Tier (Lowest Priority - Optional):** If FlexCUD families are exhausted, fall back to other general-purpose On-Demand families (e.g., `E2`) to ensure obtainability.
 
@@ -43,4 +43,11 @@ Enable `activeMigration` to allow GKE to continuously move workloads to more cos
   activeMigration:
     optimizeRulePriority: true
 ```
-- If a workload falls back to an On-Demand node (because Spot was unavailable), active migration will automatically evict the pod and move it to a Spot node when Spot capacity returns (respecting PDBs).
+- If a workload falls back to an On-Demand node (because Spot was unavailable), active migration will automatically evict the pod and move it to a Spot node when Spot capacity returns.
+- **Throttling & Blocking Disruptions:** Active migration honors Pod Disruption Budgets (PDBs). Use PDBs to throttle the rate of eviction. If you need to completely stop active migration for specific critical pods, add the `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` annotation to the pod spec.
+
+## Balanced HA Scale-Up (Round-Robin)
+If you need to achieve a roughly balanced, highly-available scale-up across multiple zones:
+- Define separate priority rules (or use separate zonal node pools) for each zone.
+- Assign an **equal `priorityScore`** to all of those zonal priority rules.
+- GKE will evaluate them together and achieve a roughly balanced scale-up via round-robin selection.

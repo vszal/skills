@@ -6,6 +6,7 @@ Controlled via `spec.autoscalingPolicy`.
 - `consolidationThreshold`: CPU utilization % (0 = always candidate).
 - `gpuConsolidationThreshold`: Accelerator utilization %.
 - *Note:* Maintenance windows do **not** block consolidation. Use PDBs to suppress disruption.
+- *Blockers:* Local storage, 'safe-to-evict: false', and bare pods block scale-down. **DaemonSets do NOT block scale-down by default.** If empty nodes aren't scaling down, look for other blocking system pods.
 
 ## ActiveMigration (Drift)
 Reconciles pods back to higher-priority rules (similar to Karpenter drift).
