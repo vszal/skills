@@ -1,4 +1,4 @@
-# CCC: CRD Fields & Spec Reference
+# ComputeClass: CRD Fields & Spec Reference
 
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
@@ -17,15 +17,15 @@ spec:
 ## Top-Level Spec Fields
 | Field | Purpose | Default / Note |
 |-------|---------|----------------|
-| `nodePoolAutoCreation.enabled` | Enable dynamic pool creation (NAC). | `false` |
-| `nodePoolConfig` | Defaults for NAC pools (image, SA, labels, taints). | See below. |
+| `nodePoolAutoCreation.enabled` | Enable dynamic pool creation (node pool auto-creation). | `false` |
+| `nodePoolConfig` | Defaults for node pool auto-creation pools (image, SA, labels, taints). | See below. |
 | `priorityDefaults` | Defaults applied to all `priorities[]` entries. | e.g. `zones`, `sysctls`. |
 | `priorities[]` | Ordered list of provisioning attempts. | Tried top-to-bottom. |
 | `autoscalingPolicy` | Consolidation thresholds and delay. | `1` min floor. |
 | `activeMigration` | Drift logic to higher priorities. | Honors PDBs. |
 | `whenUnsatisfiable` | Fallback behavior when priorities exhaust. | `DoNotScaleUp` (Default). |
 
-## `nodePoolConfig` (NAC Only)
+## `nodePoolConfig` (node pool auto-creation Only)
 Applied to pools created by the autoscaler.
 - `imageType`: `COS_CONTAINERD`, `UBUNTU_CONTAINERD`.
 - `nodeLabels`: Key-value pairs.
@@ -48,4 +48,4 @@ Applied to pools created by the autoscaler.
 
 ## `whenUnsatisfiable`
 - `DoNotScaleUp` (Default): Pods stay `Pending`. Best for specific hardware needs.
-- `ScaleUpAnyway`: Provisions **E2** nodes on Standard with NAC. Avoid for specialized workloads.
+- `ScaleUpAnyway`: Provisions **E2** nodes on Standard with node pool auto-creation. Avoid for specialized workloads.

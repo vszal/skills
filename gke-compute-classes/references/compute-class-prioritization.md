@@ -1,8 +1,8 @@
-# CCC: Prioritization, Logic & Fallbacks
+# ComputeClass: Prioritization, Logic & Fallbacks
 
 ## Sequential Traversal
 - Tried **top to bottom**.
-- If a priority is unobtainable (stockout/quota), it enters backoff and CCC tries the next entry.
+- If a priority is unobtainable (stockout/quota), it enters backoff and ComputeClass tries the next entry.
 - **Limit:** Cap list at **~10 entries**. Longer lists may loop back to the top before reaching the bottom.
 
 ## Tie-breaking with `priorityScore`
@@ -38,8 +38,8 @@ Casts wide net for scarce capacity.
 - [Asset: spot-cost-tiebreak-compute-class.yaml](../assets/spot-cost-tiebreak-compute-class.yaml)
 
 ## Fallback Pattern 3: Latency Hybrid
-`Manual Pools (Standard) -> NAC (Dynamic Fallback)`
-- Skip NAC provisioning delay by hitting warm pools first.
+`Manual Pools (Standard) -> node pool auto-creation (Dynamic Fallback)`
+- Skip node pool auto-creation provisioning delay by hitting warm pools first.
 - [Asset: manual-pool-tiebreak-compute-class.yaml](../assets/manual-pool-tiebreak-compute-class.yaml)
 
 ## Key Rules & Best Practices

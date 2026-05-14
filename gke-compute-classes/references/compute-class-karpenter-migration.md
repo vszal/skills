@@ -1,4 +1,4 @@
-# CCC: Migrating from Karpenter
+# ComputeClass: Migrating from Karpenter
 
 ## Concept Mapping
 | Karpenter | GKE ComputeClass | Note |
@@ -19,9 +19,9 @@
 - **Memory Optimized:** `r5/r6i` -> `n2-highmem / n4-highmem`.
 
 ## Key Behavioral Differences
-- **Fast-fail Traversal:** CCC falls through to next priority immediately on failure. No probabilistic selection.
-- **Spec Changes:** Updating CCC doesn't drift nodes automatically unless `activeMigration` is enabled.
+- **Fast-fail Traversal:** ComputeClass falls through to next priority immediately on failure. No probabilistic selection.
+- **Spec Changes:** Updating ComputeClass doesn't drift nodes automatically unless `activeMigration` is enabled.
 - **Drift Throttling:** GKE does not have a global drift delay (like 'consolidateAfter'). You must use PDBs on your deployments to throttle activeMigration (drift) rates.
 - **Spot vs OD:** On GCP, Spot/OD often share capacity for CPU. Always include an OD floor.
-- **No Topology in CCC:** Set `topologySpreadConstraints` on the Pod, not the CCC.
+- **No Topology in ComputeClass:** Set `topologySpreadConstraints` on the Pod, not the ComputeClass.
 - **`whenUnsatisfiable`:** Karpenter's "any VM" doesn't match GKE's `ScaleUpAnyway` (which picks E2). Use `DoNotScaleUp` and accept `Pending`.
