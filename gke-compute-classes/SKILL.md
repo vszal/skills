@@ -11,6 +11,18 @@ description: "GKE ComputeClasses: Priority-based node provisioning (node pool au
 
 Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses. 
 
+## Engagement Rules: Generalized First, Refine Later
+
+Because GKE ComputeClasses are highly dependent on exact zone availability, financial commitments (CUDs), and specific workload constraints (e.g., stateful storage affinity), you often need specific context to provide perfect recommendations.
+
+However, **do not block the user's initial request.** If a user asks for configuration YAML or recommendations:
+1. **Provide a Generalized Answer Immediately:** Fulfill their request to the best of your ability using standard best practices, placeholders (e.g., `<YOUR-ZONE-HERE>`), and generic assumptions. 
+2. **Append Follow-Up Questions:** At the end of your response, explicitly state that providing more context can lead to more specific, cost-effective, and reliable recommendations. Ask questions to pin down the following context if it is missing:
+    *   **Workload Profile:** (Stateful vs stateless, use of `activeMigration`)
+    *   **Cluster State:** (Existing node pools, auto-creation status)
+    *   **Financial Constraints:** (CUDs for specific machine series)
+    *   **Infrastructure Constraints:** (Target GCP region/zone)
+
 **Progressive Disclosure:** Do not guess configuration syntax. If a user asks about a specific topic, read the corresponding reference file below to get the exact fields, limitations, and YAML examples.
 
 ## Index of Topics
