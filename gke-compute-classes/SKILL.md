@@ -9,57 +9,26 @@ description: "GKE ComputeClasses (CCC): Priority-based node provisioning (NAC vs
 
 # GKE ComputeClasses (CCC)
 
-Decouple Pod requirements from infra implementation. Use for: Autopilot, Standard with NAC, or prioritized manual pools.
+Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses. 
 
-**Requirements:** GA features require GKE 1.31+. `priorityScore` requires GKE 1.35.2-gke.1842000+.
+**Progressive Disclosure:** Do not guess configuration syntax. If a user asks about a specific topic, read the corresponding reference file below to get the exact fields, limitations, and YAML examples.
 
-## Cheat Sheet
+## Index of Topics
 
-```yaml
-apiVersion: cloud.google.com/v1
-kind: ComputeClass
-metadata: { name: example }
-spec:
-  nodePoolAutoCreation: { enabled: true } # Required for dynamic provisioning
-  priorityDefaults: { location: { zones: [us-central1-a] } }
-  priorities: # Tried top-to-bottom
-  - machineFamily: n4     # Preferred (Intent-based)
-    minCores: 16
-    spot: false
-  - machineType: e2-standard-4 # Specific fallback
-    spot: true
-  activeMigration: { optimizeRulePriority: true } # Drift pods to higher priority
-```
+### Configuration & Architecture
+- **[CRD Fields & Definitions](./references/ccc-crd-fields.md):** `priorities`, `nodePoolConfig`, `whenUnsatisfiable`, storage overrides, and `nodeSystemConfig` (kernel tuning).
+- **[Provisioning Methods](./references/ccc-provisioning-methods.md):** Node Auto-Provisioning (NAC) vs. Manual pools, and Custom Node Initialization (DaemonSets).
+- **[Prioritization Logic](./references/ccc-prioritization.md):** Sequential traversal, `priorityScore` (tie-breaking, round-robin), and handling mixed architectures (ARM/x86).
 
-| Component | Key Logic / Selection |
-|-----------|--------------------|
-| **Selection** | `nodeSelector: cloud.google.com/compute-class: <name>` |
-| **Logic** | Sequential traversal. Backoff on stockout. Tie-break: lowest cost. |
-| **Scores** | `priorityScore`: 1-1000 (Higher = Preferred). Tie-break: lowest cost. |
-| **Config** | `nodePoolConfig`: { imageType, sa, labels, taints }. Applies to NAC nodes. |
-| **Drift** | `activeMigration`: honors PDBs to move pods to better nodes. |
+### Advanced Behaviors
+- **[Lifecycle & Active Migration](./references/ccc-lifecycle.md):** Scale-down rules, consolidation thresholds, and `activeMigration` drift behavior.
+- **[Cost Optimization](./references/ccc-cost-optimization.md):** Spot-first strategies, FlexCUD alignment, and throttling active migration with PDBs/annotations.
+- **[Gotchas & Edge Cases](./references/ccc-gotchas-and-cuds.md):** DWS limitations, Disk Generation traps, and `AnyBestEffort` reservation bypasses.
+- **[Karpenter Migration](./references/ccc-karpenter-migration.md):** Translating EKS Karpenter NodePools to GKE ComputeClasses.
 
-## Reference Directory
+### Troubleshooting
+- **[Debugging Guide](./references/ccc-debug.md):** Missing GPU tolerations, `ScaleUpAnyway` traps, Zonal PV deadlocks, and the `imageType` fragmentation bug.
 
-| Scenario | Trigger Keywords | Reference |
-|----------|-----------------|-----------|
-| **Fields & Spec** | YAML shape, `priorities`, `nodePoolConfig`, `priorityScore`, `autoscalingPolicy` | [ccc-crd-fields.md](./references/ccc-crd-fields.md) |
-| **Binding & Provisioning** | NAC setup, manual pool binding, intent-based vs strict | [ccc-provisioning-methods.md](./references/ccc-provisioning-methods.md) |
-| **Prioritization & Fallbacks** | traversal order, limits, GPU/TPU patterns, Spot/OD fallbacks | [ccc-prioritization.md](./references/ccc-prioritization.md) |
-| **Cost Optimization** | FlexCUD alignment, Spot vs OD tiering | [ccc-cost-optimization.md](./references/ccc-cost-optimization.md) |
-| **Lifecycle & Updates** | consolidation (scale-down), drift, activeMigration, update behavior | [ccc-lifecycle.md](./references/ccc-lifecycle.md) |
-| **Gotchas & CUDs** | DWS, disk generation, Service Mesh, `AnyBestEffort`, FlexCUDs | [ccc-gotchas-and-cuds.md](./references/ccc-gotchas-and-cuds.md) |
-| **Migrations** | Karpenter to CCC, NodePool mapping, weight translation | [ccc-karpenter-migration.md](./references/ccc-karpenter-migration.md) |
-| **Debugging** | scale-up failure, stockout, event logs, pending pods | [ccc-debug.md](./references/ccc-debug.md) |
-
-## Core Patterns
-1. **GPU/TPU:** `Reservation -> DWS FlexStart -> On-Demand -> Spot` (Training).
-2. **Cost:** `Spot (Preferred) -> On-Demand (Floor)`.
-3. **Latency:** `Manual Pool (Pre-warmed) -> NAC (Dynamic Fallback)`.
-
-## Assets
-
-> **Agent Instruction:** When copying or adapting any of these assets, you MUST ask the user which Google Cloud region and zone(s) they want to deploy into. Do not blindly copy the hardcoded `us-central1` zones from the examples into user environments without confirmation.
-
-- [L4 Inference](./assets/genai-inference-g4-compute-class.yaml) | [TPU Training](./assets/tpu-v5e-training-compute-class.yaml)
-- [Postgres Tuning](./assets/postgres-primary-compute-class.yaml) | [Spot Tie-break](./assets/spot-cost-tiebreak-compute-class.yaml)
+## Quick Actions
+- **Logging Script:** To find the raw decisions made by the autoscaler, use [log-autoscaler-events.sh](./assets/log-autoscaler-events.sh).
+- **Example YAMLs:** Found in the `assets/` directory (e.g., `spot-cost-tiebreak-compute-class.yaml`, `postgres-primary-compute-class.yaml`). *Note: Always ask the user for their target GCP region/zone before copying example configs.*
