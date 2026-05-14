@@ -17,7 +17,7 @@ Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses.
 
 ### Configuration & Architecture
 - **[CRD Fields & Definitions](./references/compute-class-crd-fields.md):** `priorities`, `nodePoolConfig`, `whenUnsatisfiable`, storage overrides, and `nodeSystemConfig` (kernel tuning).
-- **[Provisioning Methods](./references/compute-class-provisioning-methods.md):** Node Auto-Provisioning vs. Manual pools, and Custom Node Initialization (DaemonSets).
+- **[Provisioning Methods](./references/compute-class-provisioning-methods.md):** Node Auto-Provisioning vs. Manual pools, Custom Node Initialization (DaemonSets), and **Kueue Integration** (ResourceFlavors).
 - **[Prioritization Logic](./references/compute-class-prioritization.md):** Sequential traversal, `priorityScore` (tie-breaking, round-robin), and handling mixed architectures (ARM/x86).
 
 ### Advanced Behaviors

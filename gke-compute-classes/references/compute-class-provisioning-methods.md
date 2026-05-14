@@ -31,3 +31,18 @@ ComputeClass auto-tolerates these taints; workloads do **not** need matching tol
 - **Cluster Default:** Create ComputeClass named `default` + enable feature on cluster.
 - **Namespace Default:** Label NS `cloud.google.com/default-compute-class=<name>`.
 - **Workload Selection:** `nodeSelector: cloud.google.com/compute-class: <name>`.
+
+## Integration with Kueue (Batch/Job Queuing)
+For AI/ML batch workloads, use **Kueue** to manage quotas and job admission, while relying on **ComputeClasses** to handle hardware provisioning (fallback routing between Spot, DWS, and On-Demand).
+
+To map a Kueue `ResourceFlavor` to a ComputeClass, use the node label in the flavor definition:
+```yaml
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: "ccc-flavor"
+spec:
+  nodeLabels:
+    cloud.google.com/compute-class: "your-compute-class-name"
+```
+When Kueue admits the job, it automatically injects this `nodeSelector` into the Pod. The GKE Autoscaler will then provision hardware according to the ComputeClass's prioritized fallback list.

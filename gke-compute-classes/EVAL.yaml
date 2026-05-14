@@ -197,4 +197,13 @@ cases:
   - "The response should explain that DaemonSets are generally ignored by the GKE Cluster Autoscaler during scale-down by default."
   - "The response should advise checking for other blockers (like 'safe-to-evict: false', local storage, or blocking system pods)."
   - "The response should advise segregating non-daemonset system pods into their own ComputeClass to keep them from blocking consolidation."
-  - "The response should provide the cluster autoscaler log command to see the exact 'noScaleDown' reason."
+  - "The response should provide the cluster autoscaler log command to see the exact 'noScaleDown' reason."cases:
+- id: "compute_class_kueue_integration"
+  prompt: "We are using Kueue to manage our AI training batch jobs on GKE. We want to route these jobs to a ComputeClass that falls back from DWS to Spot. How do we configure Kueue to automatically inject the correct ComputeClass configuration into the jobs?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response should recommend mapping a Kueue 'ResourceFlavor' to the ComputeClass."
+  - "The response should provide a YAML example of the 'ResourceFlavor' using 'nodeLabels' matching the ComputeClass name (e.g., 'cloud.google.com/compute-class: my-class')."
+  - "The response should explain that when Kueue admits the job, it automatically injects this nodeSelector, triggering the GKE Autoscaler to provision based on the ComputeClass fallback list."
