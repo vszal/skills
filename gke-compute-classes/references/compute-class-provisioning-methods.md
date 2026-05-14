@@ -6,6 +6,10 @@
 | **node pool auto-creation** (Dynamic) | Autoscaler creates/deletes pools on demand. | ❌ (Ephemeral names) |
 | **Manual** | Pre-provisioned by admin. Faster scheduling. | ✅ (Stable names) |
 
+1. Node pool is a GKE API resource, not a Kubernetes CRD.
+2. On regional clusters, auto-created node pools are regional by default 
+3. No way to set a prefix or custom name for auto-created node pools
+
 ### Custom Node Initialization
 ComputeClass Node Auto-Provisioning (node pool auto-creation) dynamically manages nodes and **does not natively support custom UserData or startup scripts** via the `nodePoolConfig`. To initialize nodes:
 1. **Privileged DaemonSets (Recommended):** Deploy a DaemonSet with an `initContainer` to perform host-level setup or install proprietary monitoring agents.
