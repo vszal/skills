@@ -23,6 +23,23 @@ priorities:
     locationPolicy: ANY # Spot preference
 ```
 
+## Pod Topology Spread Constraints (PTS)
+Historically, Cluster Autoscaler (CA) struggled with Pod Topology Spread constraints. However, CA now fully supports them for zonal (or other) spreading during scale-up events.
+
+To ensure CA compatibility and force the autoscaler to provision nodes in the correct zones to balance the workload, you **must** use `whenUnsatisfiable: DoNotSchedule`.
+
+Example Configuration:
+```yaml
+spec:
+  topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: "topology.kubernetes.io/zone"
+    whenUnsatisfiable: DoNotSchedule  # Required for CA compatibility
+    labelSelector:
+      matchLabels:
+        app: my-app
+```
+
 ## Resource CUDs vs. Reservations
 Understanding how cost savings apply to autoscaled capacity:
 - **Committed Use Discounts (CUDs):** Automatically consumed by the Cluster Autoscaler. When the autoscaler provisions a node of a specific machine family (e.g., `n4`), it automatically consumes any available CUD for that family up to exhaustion. No explicit autoscaler, NAP, or CCC configuration is needed.

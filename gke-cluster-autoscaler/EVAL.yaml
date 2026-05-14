@@ -80,3 +80,53 @@ cases:
   - "The response recommends using per-class 'autoscalingPolicy' in ComputeClasses."
   - "For batch: suggest 'consolidationThreshold: 0' and short 'consolidationDelayMinutes: 1'."
   - "For serving: suggest leaving thresholds at default/low, increasing 'consolidationDelayMinutes' (5-10), or using Capacity Buffers."
+
+- id: "gke_autoscaling_pod_topology_spread"
+  prompt: "We want to ensure our pods are evenly spread across zones for high availability. We heard the Cluster Autoscaler doesn't support Pod Topology Spread constraints. Is that true, and how should we configure it?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response clarifies that Cluster Autoscaler now fully supports Pod Topology Spread constraints."
+  - "The response states that `whenUnsatisfiable: DoNotSchedule` must be used for CA compatibility."
+  - "The response provides a YAML example of the topologySpreadConstraints configuration."
+
+- id: "gke_autoscaling_cuds_vs_reservations"
+  prompt: "We just purchased specific GCP capacity reservations and Committed Use Discounts (CUDs) for N4 machine types. How do we configure the Cluster Autoscaler or ComputeClasses to consume them?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response mentions that CUDs are consumed automatically by the autoscaler without explicit configuration."
+  - "The response explains that Reservations are NOT automatically consumed and must be explicitly targeted."
+  - "The response suggests configuring consumption via the Node Pool API or a ComputeClass 'reservations' block."
+
+- id: "gke_autoscaling_system_pod_segregation"
+  prompt: "Our expensive GPU and high-memory spot nodes aren't scaling down because `kube-system` pods like `metrics-server` and `coredns` are landing on them. How do we stop system pods from pinning these nodes?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends segregating system pods via a namespace default CCC."
+  - "The response specifies labeling the `kube-system` namespace with `cloud.google.com/default-compute-class-non-daemonset=system-pool`."
+  - "The response suggests creating a 'cheap' system-pool CCC to catch these workloads."
+
+- id: "gke_autoscaling_performance_sluggishness"
+  prompt: "Our GKE cluster has over 250 node pools created by NAC and we heavily use `requiredDuringSchedulingIgnoredDuringExecution` pod anti-affinity. Recently, the cluster autoscaler has become extremely slow to provision new nodes. Why?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response identifies that having over 200 node pools slows down the autoscaler."
+  - "The response identifies that 'required' anti-affinity explodes scheduler cost at scale."
+  - "The response recommends consolidating CCCs and switching to 'preferred' anti-affinity or 'topologySpreadConstraints'."
+
+- id: "gke_autoscaling_log_debugging"
+  prompt: "I'm seeing scale-up issues in my cluster and I need to see the raw decisions made by the autoscaler. Where do I find these logs and is there a way to stream them?"
+  metadata:
+    products:
+    - "GKE"
+  rubric:
+  - "The response recommends checking the 'Cluster Autoscaler visibility logs' in Cloud Logging."
+  - "The response identifies the log ID as 'container.googleapis.com/cluster-autoscaler-visibility'."
+- "The response recommends using the 'log-autoscaler-events.sh' script located in the assets directory to tail these events."
