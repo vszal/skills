@@ -6,7 +6,7 @@ If fields are ignored or fail with "not supported," the control plane is likely 
 - **Check Versions:** `gcloud container clusters describe <CLUSTER> --format="value(currentMasterVersion,currentNodeVersion)"`.
 - **Reference:** [API docs](https://docs.cloud.google.com/kubernetes-engine/docs/reference/crds/computeclass) for "Available in GKE version" notes.
 
-## Symptom 1: CCC Config Error
+## Symptom 1: ComputeClass Config Error
 Check `status.conditions` on the ComputeClass object.
 - **Command:** `kubectl describe ComputeClass <NAME>`
 - **Common Error:** `location config with specific reservations enabled`.
@@ -22,12 +22,12 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 | `scale.up.error.out.of.resources` | GCE stockout | Add zone/family fallbacks. |
 | `scale.up.error.quota.exceeded` | Project quota cap | Raise quota in target region. |
 | `scale.up.error.ip.space.exhausted` | Subnet full | Expand subnet ranges. |
-| `scale.up.no.scale.up` | No priority matched | Check Pod requests vs CCC shapes. |
+| `scale.up.no.scale.up` | No priority matched | Check Pod requests vs ComputeClass shapes. |
 
 ## Symptom 3: Trapped in Pending (GPU Tolerations Missing)
 - **Symptom:** You request a GPU ComputeClass, but the pod is stuck in `Pending` and CA logs show `noScaleUp`. The node pool creates successfully if you do it manually.
-- **Cause:** GKE automatically taints nodes with GPUs (`nvidia.com/gpu:NoSchedule`). While the CCC knows to create the node, the Kubernetes scheduler refuses to place your pod on it because your pod lacks the toleration.
-- **Fix:** You MUST add this toleration to your pod spec for GPU CCCs:
+- **Cause:** GKE automatically taints nodes with GPUs (`nvidia.com/gpu:NoSchedule`). While the ComputeClass knows to create the node, the Kubernetes scheduler refuses to place your pod on it because your pod lacks the toleration.
+- **Fix:** You MUST add this toleration to your pod spec for GPU ComputeClasses:
     ```yaml
     tolerations:
     - key: "nvidia.com/gpu"
@@ -47,14 +47,14 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 
 ## Symptom 6: The ImageType Fragmentation Bug (Pre-1.33.5)
 - **Symptom:** Autoscaler creates hundreds of tiny, fragmented node pools.
-- **Cause:** On GKE versions older than 1.33.5-gke.1862000 (and 1.34.1-gke.2541000), explicitly defining `imageType: UBUNTU_CONTAINERD` (or COS) in a CCC causes a bug leading to excessive node pool creation.
-- **Fix:** Upgrade your cluster, or temporarily remove the `imageType` field from your CCC.
+- **Cause:** On GKE versions older than 1.33.5-gke.1862000 (and 1.34.1-gke.2541000), explicitly defining `imageType: UBUNTU_CONTAINERD` (or COS) in a ComputeClass causes a bug leading to excessive node pool creation.
+- **Fix:** Upgrade your cluster, or temporarily remove the `imageType` field from your ComputeClass.
 
-## Symptom 7: Pods Ignoring CCC
+## Symptom 7: Pods Ignoring ComputeClass
 1. **Selector Check:** Pod must have `nodeSelector: cloud.google.com/compute-class: <NAME>`.
-2. **Conflicting Selectors:** Pod also pins `cloud.google.com/gke-spot` or `machine-family`. **Fix:** Move constraints into CCC.
+2. **Conflicting Selectors:** Pod also pins `cloud.google.com/gke-spot` or `machine-family`. **Fix:** Move constraints into ComputeClass.
 3. **Manual Pool Taints:** Manual pool missing `cloud.google.com/compute-class` label/taint.
-4. **Resources:** Pod requests (CPU/RAM) exceed every CCC priority's bounds.
+4. **Resources:** Pod requests (CPU/RAM) exceed every ComputeClass priority's bounds.
 
 ## Symptom 8: "ANY" Reservation Bypassing Fallbacks
 - **Cause:** `reservations.affinity: AnyBestEffort` falls back to On-Demand at the GCE layer.
@@ -75,10 +75,10 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 
 ## Useful Commands
 ```bash
-# See which CCC nodes belong to
+# See which ComputeClass nodes belong to
 kubectl get nodes -L cloud.google.com/compute-class
 
-# Find pods selecting a specific CCC
+# Find pods selecting a specific ComputeClass
 kubectl get pods -A -o json | jq -r '.items[] | select(.spec.nodeSelector["cloud.google.com/compute-class"]=="<name>") | .metadata.name'
 
 # Pull last 1h of autoscaler logs

@@ -1,4 +1,4 @@
-# CCC: Lifecycle, Drift & Updates
+# ComputeClass: Lifecycle, Drift & Updates
 
 ## Consolidation (Scale-down)
 Controlled via `spec.autoscalingPolicy`.
@@ -15,7 +15,7 @@ Reconciles pods back to higher-priority rules (similar to Karpenter drift).
 - **Trigger:** Higher-priority capacity becomes available.
 
 ## Updating a ComputeClass
-- **No Retroactive Change:** Updating a CCC does **not** change existing nodes.
+- **No Retroactive Change:** Updating a ComputeClass does **not** change existing nodes.
 - **New Nodes Only:** Only nodes created after the update use the new spec.
 - **Drift Behavior:**
     - *Without ActiveMigration:* Old-spec nodes persist until rescheduled (rollout, drain, preemption).

@@ -15,10 +15,10 @@ cases:
     products:
     - "GKE"
   rubric:
-  - "The response correctly maps Karpenter NodePools to GKE ComputeClasses (CCC)."
-  - "The response explains that Karpenter 'weights' map to the top-to-bottom order of the CCC 'priorities' list."
-  - "The response mentions translating Karpenter 'drift' to CCC 'activeMigration'."
-  - "The response identifies that node labels and taints are defined in the 'nodePoolConfig' or per-priority section of the CCC."
+  - "The response correctly maps Karpenter NodePools to GKE ComputeClasses (ComputeClass)."
+  - "The response explains that Karpenter 'weights' map to the top-to-bottom order of the ComputeClass 'priorities' list."
+  - "The response mentions translating Karpenter 'drift' to ComputeClass 'activeMigration'."
+  - "The response identifies that node labels and taints are defined in the 'nodePoolConfig' or per-priority section of the ComputeClass."
 
 - id: "gke_compute_class_cost_optimization"
   prompt: "How can I implement a cost-optimized Spot-first strategy with an On-Demand fallback using ComputeClasses?"
@@ -26,13 +26,13 @@ cases:
     products:
     - "GKE"
   rubric:
-  - "The response provides a YAML example or description of a CCC with Spot priorities at the top."
+  - "The response provides a YAML example or description of a ComputeClass with Spot priorities at the top."
   - "The response includes an On-Demand priority as a lower-priority fallback."
-  - "The response mentions that workloads must tolerate the Spot taint or that the CCC handles auto-toleration."
+  - "The response mentions that workloads must tolerate the Spot taint or that the ComputeClass handles auto-toleration."
   - "The response discusses the trade-off between cost and preemption risk."
 
 - id: "gke_compute_class_troubleshooting"
-  prompt: "My pods are stuck in Pending even though I have a ComputeClass defined. How do I debug why NAC isn't creating nodes?"
+  prompt: "My pods are stuck in Pending even though I have a ComputeClass defined. How do I debug why node pool auto-creation isn't creating nodes?"
   metadata:
     products:
     - "GKE"
@@ -51,7 +51,7 @@ cases:
   - "The response recommends using 'nodeSystemConfig.linuxNodeConfig' for sysctls and hugepages."
   - "The response mentions using 'machineFamily: n4' or similar performance-optimized families."
   - "The response suggests configuring boot disk types (e.g., hyperdisk-balanced) to match performance needs."
-  - "The response mentions binding the CCC to a manual node pool if zero-latency scheduling is required."
+  - "The response mentions binding the ComputeClass to a manual node pool if zero-latency scheduling is required."
 
 - id: "gke_compute_class_gpu_toleration"
   prompt: "I created a ComputeClass for L4 GPUs and assigned it to my Pod via nodeSelector, but it's stuck in Pending. The autoscaler logs show 'noScaleUp'. The node pool creates successfully if I do it manually. What is missing in my Pod spec?"
@@ -108,7 +108,7 @@ cases:
   rubric:
   - "The response asks or identifies if the reservation affinity is set to 'AnyBestEffort' or 'Automatic'."
   - "The response explains that 'AnyBestEffort' falls back to On-Demand at the GCE layer, bypassing the ComputeClass fallback logic."
-  - "The response suggests switching to 'Specific' affinity with named reservations to allow proper CCC fallback."
+  - "The response suggests switching to 'Specific' affinity with named reservations to allow proper ComputeClass fallback."
 
 - id: "gke_compute_class_balanced_ha_scaleup"
   prompt: "We want to ensure our web frontend scales up in a balanced way across three zones (us-central1-a, b, c) for high availability using reservations. How do we configure the ComputeClass priorities to achieve roughly equal zonal distribution?"
@@ -149,7 +149,7 @@ cases:
   - "The response recommends trimming the priorities list to a maximum of around 10 entries."
 
 - id: "gke_compute_class_log_debugging"
-  prompt: "My ComputeClass isn't scaling up as expected. Where can I find the most detailed logs to debug why NAC is skipping my priorities, and is there a tool to help me parse them?"
+  prompt: "My ComputeClass isn't scaling up as expected. Where can I find the most detailed logs to debug why node pool auto-creation is skipping my priorities, and is there a tool to help me parse them?"
   metadata:
     products:
     - "GKE"
@@ -168,7 +168,7 @@ cases:
   - "The response should acknowledge that while PDBs are the primary safety mechanism, adjusting the autoscaling policy only controls node consolidation."
 
 - id: "karpenter_spot_abstraction"
-  prompt: "With Karpenter, we could specify 5 different instance families and tell it to just 'pick the cheapest Spot instance available anywhere'. In GKE ComputeClasses, since priorities are evaluated sequentially, how do we configure the CCC so that it strictly tries *every* Spot family (N4, C4, C3, N2, E2) across *all* zones based on the absolute lowest price *before* falling back to any On-Demand node?"
+  prompt: "With Karpenter, we could specify 5 different instance families and tell it to just 'pick the cheapest Spot instance available anywhere'. In GKE ComputeClasses, since priorities are evaluated sequentially, how do we configure the ComputeClass so that it strictly tries *every* Spot family (N4, C4, C3, N2, E2) across *all* zones based on the absolute lowest price *before* falling back to any On-Demand node?"
   metadata:
     products:
     - "GKE"
@@ -179,7 +179,7 @@ cases:
   - "The response should provide a YAML snippet showing multiple spot priorities with equal priority scores, followed by On-Demand priorities with lower scores."
 
 - id: "karpenter_disk_mapping"
-  prompt: "In Karpenter, we used 'blockDeviceMappings' to give our machine learning nodes 500GB local NVMe drives, but our fallback generic nodes just used 100GB EBS volumes. In a GKE ComputeClass, the 'nodePoolConfig' applies to the whole class. How do we configure our CCC so that our top priority uses Local SSDs for scratch space, but the fallback priority uses standard 100GB persistent boot disks?"
+  prompt: "In Karpenter, we used 'blockDeviceMappings' to give our machine learning nodes 500GB local NVMe drives, but our fallback generic nodes just used 100GB EBS volumes. In a GKE ComputeClass, the 'nodePoolConfig' applies to the whole class. How do we configure our ComputeClass so that our top priority uses Local SSDs for scratch space, but the fallback priority uses standard 100GB persistent boot disks?"
   metadata:
     products:
     - "GKE"

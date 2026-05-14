@@ -1,4 +1,4 @@
-# CCC: Cost Optimization & FlexCUDs
+# ComputeClass: Cost Optimization & FlexCUDs
 
 ## Aligning with Flexible Committed Use Discounts (FlexCUDs)
 FlexCUDs provide predictable, high-value discounts in exchange for a commitment to spend a specific amount per hour across eligible machine types in a specific region.

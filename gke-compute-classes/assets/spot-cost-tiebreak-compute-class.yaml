@@ -3,7 +3,7 @@ kind: ComputeClass
 metadata:
   name: spot-cost-tiebreak-usc1
 spec:
-  description: "Spot-first cost tie-break for stateless, disruption-tolerant workloads in us-central1 — web serving, batch jobs, async processors. Three equal-score Spot families let CCC pick lowest-cost-available rather than baking a family ordering into YAML that would rot as Spot pricing shifts. On-Demand floor guarantees execution. Tune activeMigration and consolidation per workload type — see comments. Requires GKE 1.35.2-gke.1842000+."
+  description: "Spot-first cost tie-break for stateless, disruption-tolerant workloads in us-central1 — web serving, batch jobs, async processors. Three equal-score Spot families let ComputeClass pick lowest-cost-available rather than baking a family ordering into YAML that would rot as Spot pricing shifts. On-Demand floor guarantees execution. Tune activeMigration and consolidation per workload type — see comments. Requires GKE 1.35.2-gke.1842000+."
   nodePoolAutoCreation:
     enabled: true
   # activeMigration is a serving-tier setting: drifts replicas back from the OD
@@ -27,11 +27,11 @@ spec:
   # priorityScore: integer 1-1000, higher = preferred. Max 3 rules per score.
   # If priorityScore is set on any rule, ALL priorities must have one.
   # Same-score rules are evaluated together; tie-break is by lowest unit cost,
-  # so CCC picks whichever of the three is cheapest *and* available right now.
+  # so ComputeClass picks whichever of the three is cheapest *and* available right now.
   priorities:
   # Score 100 — top tier: three interchangeable Spot families. Vendor and
   # generation spread (Intel Gen 1 / AMD Gen 2 / Intel Gen 4) for obtainability;
-  # CCC's cost tie-break does the price selection, so the order here doesn't matter.
+  # ComputeClass's cost tie-break does the price selection, so the order here doesn't matter.
   - machineFamily: e2
     minCores: 4
     spot: true

@@ -4,10 +4,10 @@ license: Apache-2.0
 metadata:
   author: Google Cloud
   version: "1.0.0"
-description: "GKE ComputeClasses (CCC): Priority-based node provisioning (NAC vs manual), fallbacks, and cost optimization."
+description: "GKE ComputeClasses: Priority-based node provisioning (node pool auto-creation vs manual), fallbacks, and cost optimization."
 ---
 
-# GKE ComputeClasses (CCC)
+# GKE ComputeClasses
 
 Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses. 
 
@@ -16,18 +16,18 @@ Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses.
 ## Index of Topics
 
 ### Configuration & Architecture
-- **[CRD Fields & Definitions](./references/ccc-crd-fields.md):** `priorities`, `nodePoolConfig`, `whenUnsatisfiable`, storage overrides, and `nodeSystemConfig` (kernel tuning).
-- **[Provisioning Methods](./references/ccc-provisioning-methods.md):** Node Auto-Provisioning (NAC) vs. Manual pools, and Custom Node Initialization (DaemonSets).
-- **[Prioritization Logic](./references/ccc-prioritization.md):** Sequential traversal, `priorityScore` (tie-breaking, round-robin), and handling mixed architectures (ARM/x86).
+- **[CRD Fields & Definitions](./references/compute-class-crd-fields.md):** `priorities`, `nodePoolConfig`, `whenUnsatisfiable`, storage overrides, and `nodeSystemConfig` (kernel tuning).
+- **[Provisioning Methods](./references/compute-class-provisioning-methods.md):** Node Auto-Provisioning vs. Manual pools, and Custom Node Initialization (DaemonSets).
+- **[Prioritization Logic](./references/compute-class-prioritization.md):** Sequential traversal, `priorityScore` (tie-breaking, round-robin), and handling mixed architectures (ARM/x86).
 
 ### Advanced Behaviors
-- **[Lifecycle & Active Migration](./references/ccc-lifecycle.md):** Scale-down rules, consolidation thresholds, and `activeMigration` drift behavior.
-- **[Cost Optimization](./references/ccc-cost-optimization.md):** Spot-first strategies, FlexCUD alignment, and throttling active migration with PDBs/annotations.
-- **[Gotchas & Edge Cases](./references/ccc-gotchas-and-cuds.md):** DWS limitations, Disk Generation traps, and `AnyBestEffort` reservation bypasses.
-- **[Karpenter Migration](./references/ccc-karpenter-migration.md):** Translating EKS Karpenter NodePools to GKE ComputeClasses.
+- **[Lifecycle & Active Migration](./references/compute-class-lifecycle.md):** Scale-down rules, consolidation thresholds, and `activeMigration` drift behavior.
+- **[Cost Optimization](./references/compute-class-cost-optimization.md):** Spot-first strategies, FlexCUD alignment, and throttling active migration with PDBs/annotations.
+- **[Gotchas & Edge Cases](./references/compute-class-gotchas-and-cuds.md):** DWS limitations, Disk Generation traps, and `AnyBestEffort` reservation bypasses.
+- **[Karpenter Migration](./references/compute-class-karpenter-migration.md):** Translating EKS Karpenter NodePools to GKE ComputeClasses.
 
 ### Troubleshooting
-- **[Debugging Guide](./references/ccc-debug.md):** Missing GPU tolerations, `ScaleUpAnyway` traps, Zonal PV deadlocks, and the `imageType` fragmentation bug.
+- **[Debugging Guide](./references/compute-class-debug.md):** Missing GPU tolerations, `ScaleUpAnyway` traps, Zonal PV deadlocks, and the `imageType` fragmentation bug.
 
 ## Quick Actions
 - **Logging Script:** To find the raw decisions made by the autoscaler, use [log-autoscaler-events.sh](./assets/log-autoscaler-events.sh).
