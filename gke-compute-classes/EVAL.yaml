@@ -156,7 +156,8 @@ cases:
   rubric:
   - "The response recommends checking the 'Cluster Autoscaler visibility logs' in Cloud Logging."
   - "The response identifies the log ID as 'container.googleapis.com/cluster-autoscaler-visibility'."
-  - "The response recommends using the 'log-autoscaler-events.sh' script located in the assets directory to tail and parse these events."cases:
+  - "The response recommends using the 'log-autoscaler-events.sh' script located in the assets directory to tail and parse these events."
+  
 - id: "karpenter_thrashing_translation"
   prompt: "In Karpenter, our 'consolidateAfter: 10m' setting worked well, but in GKE with ComputeClasses, the active migration from On-Demand back to Spot is causing too much pod thrashing across our microservices. How do we globally slow down active migration across a ComputeClass without completely disabling it or modifying every single deployment with a PDB?"
   metadata:
@@ -208,4 +209,3 @@ cases:
   - "The response should recommend mapping a Kueue 'ResourceFlavor' to the ComputeClass."
   - "The response should provide a YAML example of the 'ResourceFlavor' using 'nodeLabels' matching the ComputeClass name (e.g., 'cloud.google.com/compute-class: my-class')."
   - "The response should explain that when Kueue admits the job, it automatically injects this nodeSelector, triggering the GKE Autoscaler to provision based on the ComputeClass fallback list."
-  
