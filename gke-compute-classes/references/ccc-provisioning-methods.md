@@ -6,6 +6,11 @@
 | **NAC** (Dynamic) | Autoscaler creates/deletes pools on demand. | ❌ (Ephemeral names) |
 | **Manual** | Pre-provisioned by admin. Faster scheduling. | ✅ (Stable names) |
 
+### Custom Node Initialization
+ComputeClass Node Auto-Provisioning (NAC) dynamically manages nodes and **does not natively support custom UserData or startup scripts** via the `nodePoolConfig`. To initialize nodes:
+1. **Privileged DaemonSets (Recommended):** Deploy a DaemonSet with an `initContainer` to perform host-level setup or install proprietary monitoring agents.
+2. **Custom OS Images:** GKE supports custom OS images via the [gke-custom-image-builder](https://github.com/GoogleCloudPlatform/gke-custom-image-builder-cos) (Private preview; contact account team), though DaemonSets are the primary K8s-native workaround.
+
 ### Hybrid Strategy
 Put manual pools at the top for zero-latency scheduling; use NAC fallbacks below for infinite scale.
 

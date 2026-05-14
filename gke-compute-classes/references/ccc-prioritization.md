@@ -46,6 +46,6 @@ Casts wide net for scarce capacity.
 - **Don't repeat rules.** Repetition does not improve obtainability.
 - **Vary dimensions.** A good list varies by Zone, Family, and Capacity Type (Spot/OD).
 - **Always include a floor.** Ensure the last priority is a high-availability option (e.g., On-Demand N4/E2) so the workload isn't stuck `Pending`.
-- **Mixed Architectures:** Avoid falling back between different chip types (e.g. TPU to GPU) unless the PodSpec supports multi-arch/drivers.
+- **Mixed Architectures:** You can mix multiple architectures (e.g., `n4a` for ARM and `n4` for x86) in a single `priorities[]` array. The Cluster Autoscaler will skip incompatible shapes if the Pod specifies an architecture constraint (e.g., via `nodeSelector` or affinity for `kubernetes.io/arch`). **Best Practice:** Use multi-platform container image builds ([docs](https://docs.docker.com/build/building/multi-platform/)) to allow seamless fallback between architectures without crashing pods.
 - **Spot for CPU:** If On-Demand is exhausted in a zone, Spot usually is too.
 - **Spot for Accelerator:** Spot often has capacity even when On-Demand doesn't.

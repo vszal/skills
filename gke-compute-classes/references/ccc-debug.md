@@ -64,7 +64,12 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 - **Cause:** Gen 4 VMs (Hyperdisk) vs Gen 2 (PD).
 - **Fix:** Do not mix Gen 2 and Gen 4 in the same priority list for workloads with attached PVs.
 
-## Symptom 10: List Loops / Backoff
+## Symptom 10: Zonal PV Deadlock (Pending Pods)
+- **Symptom:** A StatefulSet pod using standard Zonal Persistent Disks is stuck in Pending. The ComputeClass created a node in `us-central1-a`, but the disk is in `us-central1-b`.
+- **Cause:** The PV already exists in a specific zone, but the autoscaler picked a different zone.
+- **Fix:** Do **not** hardcode the `location` in the ComputeClass priorities, as this reduces obtainability. Instead, configure the **StorageClass** with `volumeBindingMode: WaitForFirstConsumer`. This forces the disk to be provisioned in the same zone where the Autoscaler decides to schedule the Pod.
+
+## Symptom 11: List Loops / Backoff
 - **Cause:** Too many priorities (>10). Upper-tier backoffs expire before reaching the bottom.
 - **Fix:** Trim the list; remove redundant rules.
 
