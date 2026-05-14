@@ -42,6 +42,7 @@ Applied to pools created by the autoscaler.
 - `gpu` / `tpu`: Accelerator requests (count, type, topology).
 - `nodepools`: (Standard Only) List of manual pool names to target.
 - `nodeSystemConfig`: `linuxNodeConfig` (sysctls, hugepages) and `kubeletConfig`.
+- `storage`: Set `bootDiskType`, `bootDiskSizeGb`, and `localSsdCount` specifically for this priority. Overrides cluster/nodePoolConfig defaults.
 
 ## `whenUnsatisfiable`
 - `DoNotScaleUp` (Default): Pods stay `Pending`. Best for specific hardware needs.
