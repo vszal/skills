@@ -41,7 +41,9 @@ Applied to pools created by the autoscaler.
 - `flexStart`: `{ enabled: true }` for DWS queued provisioning.
 - `gpu` / `tpu`: Accelerator requests (count, type, topology).
 - `nodepools`: (Standard Only) List of manual pool names to target.
-- `nodeSystemConfig`: `linuxNodeConfig` (sysctls, hugepages) and `kubeletConfig`.
+- `nodeSystemConfig`: 
+  - `linuxNodeConfig`: Defines `sysctls` and `transparentHugepageEnabled` (hugepages).
+  - `kubeletConfig`: Defines kubelet behaviors, including `shutdownGracePeriodSeconds` (extend Spot termination grace period up to 120s on GKE 1.35+) and `shutdownGracePeriodCriticalPodsSeconds`.
 - `storage`: Set `bootDiskType`, `bootDiskSizeGb`, and `localSsdCount` specifically for this priority. Overrides cluster/nodePoolConfig defaults.
 
 ## `whenUnsatisfiable`
