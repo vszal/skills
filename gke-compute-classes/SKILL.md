@@ -16,7 +16,7 @@ Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses.
 Because GKE ComputeClasses are highly dependent on exact zone availability, financial commitments (CUDs), and specific workload constraints (e.g., stateful storage affinity), you often need specific context to provide perfect recommendations.
 
 However, **do not block the user's initial request.** If a user asks for configuration YAML or recommendations:
-1. **Provide a Generalized Answer Immediately:** Fulfill their request to the best of your ability using standard best practices, placeholders (e.g., `<YOUR-ZONE-HERE>`), and generic assumptions. 
+1. **Provide a Generalized Answer Immediately:** Fulfill their request to the best of your ability using standard best practices, placeholders (e.g., `<YOUR-ZONE-HERE>`), and generic assumptions. **Crucially, you MUST clearly label this initial YAML as an `EXAMPLE TEMPLATE - DO NOT DEPLOY` (using comments or text) so the user does not mistakenly apply generic configuration.** 
 2. **Append Follow-Up Questions:** At the end of your response, explicitly state that providing more context can lead to more specific, cost-effective, and reliable recommendations. Ask questions to pin down the following context if it is missing:
     *   **Workload Profile:** (Stateful vs stateless, use of `activeMigration`)
     *   **Cluster State:** (Existing node pools, auto-creation status)
