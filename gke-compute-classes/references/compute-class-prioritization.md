@@ -2,8 +2,8 @@
 
 ## Sequential Traversal
 - Tried **top to bottom**.
-- If a priority is unobtainable (stockout/quota), it enters backoff and ComputeClass tries the next entry.
-- **Limit:** Cap list at **~10 entries**. Longer lists may loop back to the top before reaching the bottom.
+- If a priority is unobtainable (stockout/quota), that specific priority enters a **5-minute cooldown (backoff)**, and the autoscaler immediately tries the next entry.
+- **Limit:** Cap list at **~10 entries**. Longer lists may loop back to the top before reaching the bottom because the 5-minute cooldowns on the top priorities will expire before the bottom of the list is reached.
 
 ## Tie-breaking with `priorityScore`
 Used when multiple rules have equal preference.
@@ -26,11 +26,15 @@ Casts wide net for scarce capacity.
 - **DWS/OD Floor:** Fallback for serving.
 - [Asset: genai-inference-g4-compute-class.yaml](../assets/genai-inference-g4-compute-class.yaml)
 
-### Training
+### Training (Production)
 `Reservation -> DWS FlexStart -> On-Demand -> Spot`
 - **DWS High:** Acceptable 3-min queue to land scarce capacity.
 - **Spot Last:** Preemption forces checkpoint restarts; more disruptive than waiting for OD/DWS.
 - [Asset: tpu-v5e-training-compute-class.yaml](../assets/tpu-v5e-training-compute-class.yaml)
+
+### Training (Non-Production / Dev)
+`Spot -> On-Demand`
+- Prioritize Spot to optimize costs for developers. If Spot is unavailable, fall back to On-Demand to unblock development.
 
 ## Fallback Pattern 2: Cost-Optimized Batch
 `Spot (Preferred) -> On-Demand (Safety Floor)`
