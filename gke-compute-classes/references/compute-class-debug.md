@@ -70,7 +70,7 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 - **Fix:** Do **not** hardcode the `location` in the ComputeClass priorities, as this reduces obtainability. Instead, configure the **StorageClass** with `volumeBindingMode: WaitForFirstConsumer`. This forces the disk to be provisioned in the same zone where the Autoscaler decides to schedule the Pod.
 
 ## Symptom 11: List Loops / Backoff
-- **Cause:** Too many priorities (>10). Upper-tier backoffs expire before reaching the bottom.
+- **Cause:** Too many priorities (>10). When a scale-up fails, that priority enters a **5-minute cooldown**. If the list is too long, the upper-tier cooldowns expire before reaching the bottom, causing the autoscaler to loop infinitely at the top.
 - **Fix:** Trim the list; remove redundant rules.
 
 ## Useful Commands
