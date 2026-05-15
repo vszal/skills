@@ -12,6 +12,7 @@ Controlled via `spec.autoscalingPolicy`.
 Reconciles pods back to higher-priority rules (similar to Karpenter drift).
 - `optimizeRulePriority: true`: Enables the drift controller.
 - **Disruption:** Honors PDBs. Without a PDB, eviction is uncontrolled.
+- **Warning:** `maxUnavailable: 0` PDBs permanently block Active Migration.
 - **Trigger:** Higher-priority capacity becomes available.
 
 ## Updating a ComputeClass

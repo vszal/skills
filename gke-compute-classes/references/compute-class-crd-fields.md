@@ -30,7 +30,7 @@ Applied to pools created by the autoscaler.
 - `imageType`: `COS_CONTAINERD`, `UBUNTU_CONTAINERD`.
 - `nodeLabels`: Key-value pairs.
 - `taints`: List of `{ key, value, effect }`.
-- `serviceAccount`: Identity for nodes.
+- `serviceAccount`: Identity for nodes (use custom SA with least privilege, not default).
 
 ## `priorities[]` Fields
 - `machineFamily` / `machineType`: Intent vs. strict. Prefer family.
@@ -42,8 +42,8 @@ Applied to pools created by the autoscaler.
 - `gpu` / `tpu`: Accelerator requests (count, type, topology).
 - `nodepools`: (Standard Only) List of manual pool names to target.
 - `nodeSystemConfig`: 
-  - `linuxNodeConfig`: Defines `sysctls` and `transparentHugepageEnabled` (hugepages).
-  - `kubeletConfig`: Defines kubelet behaviors, including `shutdownGracePeriodSeconds` (extend Spot termination grace period up to 120s on GKE 1.35+) and `shutdownGracePeriodCriticalPodsSeconds`.
+  - `linuxNodeConfig`: `sysctls` (e.g., `net.core.somaxconn: "4096"`) and `transparentHugepageEnabled`.
+  - `kubeletConfig`: `shutdownGracePeriodSeconds` (extend Spot termination grace period up to 120s on GKE 1.35+).
 - `storage`: Set `bootDiskType`, `bootDiskSizeGb`, and `localSsdCount` specifically for this priority. Overrides cluster/nodePoolConfig defaults.
 
 ## `whenUnsatisfiable`

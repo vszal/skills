@@ -18,6 +18,9 @@ ComputeClass Node Auto-Provisioning (node pool auto-creation) dynamically manage
 ### Hybrid Strategy
 Put manual pools at the top for zero-latency scheduling; use node pool auto-creation fallbacks below for infinite scale.
 
+## Stateful Workloads & Storage
+For Zonal PVs, you should use `volumeBindingMode: WaitForFirstConsumer` in `StorageClass` to avoid cross-zone deadlocks between disks and autoscaled nodes.
+
 ## Intent-based vs. Strict Configuration
 - **Intent-based (Preferred):** `machineFamily: n4`, `minCores: 16`. Allows GKE to find best-fit shape or substitute families.
 - **Strict:** `machineType: n4-standard-16`. Pins to exact SKU.
