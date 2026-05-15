@@ -2,15 +2,13 @@
 
 ## First Check: GKE Version
 If fields are ignored or fail with "not supported," the control plane is likely too old.
-- **Verify CRD:** `kubectl describe crd computeclasses.cloud.google.com` (Authoritative).
-- **Check Versions:** `gcloud container clusters describe <CLUSTER> --format="value(currentMasterVersion,currentNodeVersion)"`.
-- **Reference:** [API docs](https://docs.cloud.google.com/kubernetes-engine/docs/reference/crds/computeclass) for "Available in GKE version" notes.
+- **Verify CRD:** `kubectl describe crd computeclasses.cloud.google.com`
+- **Check Versions:** `gcloud container clusters describe <CLUSTER> --format="value(currentMasterVersion,currentNodeVersion)"`
 
 ## Symptom 1: ComputeClass Config Error
-Check `status.conditions` on the ComputeClass object.
-- **Command:** `kubectl describe ComputeClass <NAME>`
+Check `status.conditions` on the ComputeClass object via `kubectl describe ComputeClass <NAME>`.
 - **Common Error:** `location config with specific reservations enabled`.
-- **Fix:** Omit `location` from the reservation priority. Set `reservations.specific[].zones` instead.
+- **Fix:** Omit `location` from the reservation priority. Use `reservations.specific[].zones` instead.
 
 ## Symptom 2: Scale-Up Failure (Pods Pending)
 Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/cluster-autoscaler-visibility)).
@@ -22,65 +20,56 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 | `scale.up.error.out.of.resources` | GCE stockout | Add zone/family fallbacks. |
 | `scale.up.error.quota.exceeded` | Project quota cap | Raise quota in target region. |
 | `scale.up.error.ip.space.exhausted` | Subnet full | Expand subnet ranges. |
-| `scale.up.no.scale.up` | No priority matched | Check Pod requests vs ComputeClass shapes. |
+| `scale.up.no.scale.up` | No priority matched | Check Pod requests vs shapes. |
 
 ## Symptom 3: Trapped in Pending (GPU Tolerations Missing)
-- **Symptom:** You request a GPU ComputeClass, but the pod is stuck in `Pending` and CA logs show `noScaleUp`. The node pool creates successfully if you do it manually.
-- **Cause:** GKE automatically taints nodes with GPUs (`nvidia.com/gpu:NoSchedule`). While the ComputeClass knows to create the node, the Kubernetes scheduler refuses to place your pod on it because your pod lacks the toleration.
-- **Fix:** You MUST add this toleration to your pod spec for GPU ComputeClasses:
-    ```yaml
-    tolerations:
-    - key: "nvidia.com/gpu"
-      operator: "Exists"
-      effect: "NoSchedule"
-    ```
+- **Symptom:** Pod requesting a GPU ComputeClass is stuck in `Pending` with `noScaleUp` logs.
+- **Cause:** GKE auto-taints GPU nodes (`nvidia.com/gpu:NoSchedule`). Scheduler refuses placement without a toleration.
+- **Fix:** Add toleration to pod spec:
+  ```yaml
+  tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+  ```
 
-## Symptom 4: Wrong Nodes Provisioned (The E2 Fallback Trap)
-- **Symptom:** You requested specific nodes (e.g., `C3` or `N4`) in your `priorities`, but GKE keeps provisioning default `E2` nodes.
-- **Cause:** Your `ComputeClass` is likely set to `whenUnsatisfiable: ScaleUpAnyway`. This tells GKE "if you can't find my preferred hardware, just give me generic E2 nodes so the pod can start."
-- **Fix:** Change `whenUnsatisfiable` to `DoNotScaleUp` to strictly enforce your hardware list.
+## Symptom 4: Wrong Nodes Provisioned (E2 Fallback Trap)
+- **Symptom:** Requested specific nodes (e.g., `C3` or `N4`), but GKE provisions default `E2` nodes.
+- **Cause:** `whenUnsatisfiable: ScaleUpAnyway` provisions generic E2 nodes to start the pod if preferred hardware fails.
+- **Fix:** Set `whenUnsatisfiable: DoNotScaleUp` to strictly enforce hardware list.
 
-## Symptom 5: Active Migration is Blocked
-- **Symptom:** You have `activeMigration: { optimizeRulePriority: true }` enabled. Spot capacity has returned, but pods are stuck on the expensive On-Demand fallback nodes.
-- **Cause:** Pod Disruption Budgets (PDBs) are blocking the eviction. Active migration strictly honors PDBs.
-- **Fix:** Check `kubectl get pdb`. Ensure your PDBs allow at least 1 disruption so CA can migrate the pods.
+## Symptom 5: Active Migration Blocked
+- **Symptom:** Spot capacity returned, but pods stuck on On-Demand nodes.
+- **Cause:** Pod Disruption Budgets (PDBs) block eviction. Active migration strictly honors PDBs.
+- **Fix:** Ensure PDBs allow at least 1 disruption. `maxUnavailable: 0` blocks migration.
 
-## Symptom 6: The ImageType Fragmentation Bug (Pre-1.33.5)
+## Symptom 6: ImageType Fragmentation Bug (Pre-1.33.5)
 - **Symptom:** Autoscaler creates hundreds of tiny, fragmented node pools.
-- **Cause:** On GKE versions older than 1.33.5-gke.1862000 (and 1.34.1-gke.2541000), explicitly defining `imageType: UBUNTU_CONTAINERD` (or COS) in a ComputeClass causes a bug leading to excessive node pool creation.
-- **Fix:** Upgrade your cluster, or temporarily remove the `imageType` field from your ComputeClass.
+- **Cause:** Explicitly defining `imageType: UBUNTU_CONTAINERD` (or COS) on versions older than 1.33.5-gke.1862000 (and 1.34.1-gke.2541000).
+- **Fix:** Upgrade cluster or temporarily remove `imageType`.
 
 ## Symptom 7: Pods Ignoring ComputeClass
-1. **Selector Check:** Pod must have `nodeSelector: cloud.google.com/compute-class: <NAME>`.
-2. **Conflicting Selectors:** Pod also pins `cloud.google.com/gke-spot` or `machine-family`. **Fix:** Move constraints into ComputeClass.
-3. **Manual Pool Taints:** Manual pool missing `cloud.google.com/compute-class` label/taint.
-4. **Resources:** Pod requests (CPU/RAM) exceed every ComputeClass priority's bounds.
+- **Fixes:** Ensure pod has `nodeSelector: cloud.google.com/compute-class: <NAME>`. Move conflicting constraints (e.g., `machine-family`) into ComputeClass. Verify manual pools have correct label/taint. Check if Pod requests exceed priority bounds.
 
-## Symptom 8: "ANY" Reservation Bypassing Fallbacks
-- **Cause:** `reservations.affinity: AnyBestEffort` falls back to On-Demand at the GCE layer.
+## Symptom 8: "ANY" Reservation Bypasses Fallbacks
+- **Cause:** `reservations.affinity: AnyBestEffort` falls back to On-Demand at GCE layer.
 - **Fix:** Use `affinity: Specific` with named reservations.
 
 ## Symptom 9: Disk/PV Attachment Fail
-- **Cause:** Gen 4 VMs (Hyperdisk) vs Gen 2 (PD).
-- **Fix:** Do not mix Gen 2 and Gen 4 in the same priority list for workloads with attached PVs.
+- **Cause:** Mixing Gen 4 VMs (Hyperdisk) and Gen 2 (PD) in the same priority list.
+- **Fix:** Do not mix generations for workloads with attached PVs.
 
 ## Symptom 10: Zonal PV Deadlock (Pending Pods)
-- **Symptom:** A StatefulSet pod using standard Zonal Persistent Disks is stuck in Pending. The ComputeClass created a node in `us-central1-a`, but the disk is in `us-central1-b`.
-- **Cause:** The PV already exists in a specific zone, but the autoscaler picked a different zone.
-- **Fix:** Do **not** hardcode the `location` in the ComputeClass priorities, as this reduces obtainability. Instead, configure the **StorageClass** with `volumeBindingMode: WaitForFirstConsumer`. This forces the disk to be provisioned in the same zone where the Autoscaler decides to schedule the Pod.
+- **Symptom:** StatefulSet pod is Pending because disk is in zone B but node is in zone A.
+- **Fix:** Do **not** hardcode `location` in priorities. Configure `StorageClass` with `volumeBindingMode: WaitForFirstConsumer` so disk provisions in the chosen node's zone.
 
 ## Symptom 11: List Loops / Backoff
-- **Cause:** Too many priorities (>10). When a scale-up fails, that priority enters a **5-minute cooldown**. If the list is too long, the upper-tier cooldowns expire before reaching the bottom, causing the autoscaler to loop infinitely at the top.
-- **Fix:** Trim the list; remove redundant rules.
+- **Cause:** >10 priorities. Unobtainable shapes enter a 5-minute cooldown. Long lists expire upper-tier cooldowns before reaching the bottom, causing an infinite loop.
+- **Fix:** Trim list; remove redundant rules.
 
 ## Useful Commands
 ```bash
-# See which ComputeClass nodes belong to
 kubectl get nodes -L cloud.google.com/compute-class
-
-# Find pods selecting a specific ComputeClass
 kubectl get pods -A -o json | jq -r '.items[] | select(.spec.nodeSelector["cloud.google.com/compute-class"]=="<name>") | .metadata.name'
-
-# Pull last 1h of autoscaler logs
 gcloud logging read 'log_id("container.googleapis.com/cluster-autoscaler-visibility")' --freshness=1h --limit=50
 ```
