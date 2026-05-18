@@ -1,211 +1,314 @@
 cases:
-- id: "gke_compute_class_maximize_obtainability"
-  prompt: "As a platform engineer, how do I use GKE ComputeClasses to maximize obtainability for a GPU-intensive workload?"
+- id: gke_compute_class_maximize_obtainability
+  prompt: As a platform engineer, how do I use GKE ComputeClasses to maximize obtainability
+    for a GPU-intensive workload?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response recommends an intent-based priority list with multiple machine families or zones."
-  - "The response mentions using 'activeMigration' to return to the preferred tier once capacity is available."
-  - "The response suggests using multiple zones to mitigate regional stockouts."
-
-- id: "gke_compute_class_karpenter_migration"
-  prompt: "I am migrating from Karpenter on EKS to GKE. How do I translate my Karpenter NodePools to GKE ComputeClasses?"
+  - The response recommends an intent-based priority list with multiple machine families
+    or zones.
+  - The response mentions using 'activeMigration' to return to the preferred tier
+    once capacity is available.
+  - The response suggests using multiple zones to mitigate regional stockouts.
+- id: gke_compute_class_karpenter_migration
+  prompt: I am migrating from Karpenter on EKS to GKE. How do I translate my Karpenter
+    NodePools to GKE ComputeClasses?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response correctly maps Karpenter NodePools to GKE ComputeClasses (ComputeClass)."
-  - "The response explains that Karpenter 'weights' map to the top-to-bottom order of the ComputeClass 'priorities' list."
-  - "The response mentions translating Karpenter 'drift' to ComputeClass 'activeMigration'."
-  - "The response identifies that node labels and taints are defined in the 'nodePoolConfig' or per-priority section of the ComputeClass."
-
-- id: "gke_compute_class_cost_optimization"
-  prompt: "How can I implement a cost-optimized Spot-first strategy with an On-Demand fallback using ComputeClasses?"
+  - The response correctly maps Karpenter NodePools to GKE ComputeClasses (ComputeClass).
+  - The response explains that Karpenter 'weights' map to the top-to-bottom order
+    of the ComputeClass 'priorities' list.
+  - The response mentions translating Karpenter 'drift' to ComputeClass 'activeMigration'.
+  - The response identifies that node labels and taints are defined in the 'nodePoolConfig'
+    or per-priority section of the ComputeClass.
+- id: gke_compute_class_cost_optimization
+  prompt: How can I implement a cost-optimized Spot-first strategy with an On-Demand
+    fallback using ComputeClasses?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response provides a YAML example or description of a ComputeClass with Spot priorities at the top."
-  - "The response includes an On-Demand priority as a lower-priority fallback."
-  - "The response mentions that workloads must tolerate the Spot taint or that the ComputeClass handles auto-toleration."
-  - "The response discusses the trade-off between cost and preemption risk."
-
-- id: "gke_compute_class_troubleshooting"
-  prompt: "My pods are stuck in Pending even though I have a ComputeClass defined. How do I debug why node pool auto-creation isn't creating nodes?"
+  - The response provides a YAML example or description of a ComputeClass with Spot
+    priorities at the top.
+  - The response includes an On-Demand priority as a lower-priority fallback.
+  - The response mentions that workloads must tolerate the Spot taint or that the
+    ComputeClass handles auto-toleration.
+  - The response discusses the trade-off between cost and preemption risk.
+- id: gke_compute_class_troubleshooting
+  prompt: My pods are stuck in Pending even though I have a ComputeClass defined.
+    How do I debug why node pool auto-creation isn't creating nodes?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response suggests checking the ComputeClass status using 'kubectl describe computeclass'."
-  - "The response mentions inspecting Cluster Autoscaler visibility logs or events ('kubectl get events')."
-  - "The response identifies common causes like stockouts, conflicting pod affinity/selectors, or quota limits."
-  - "The response recommends verifying that 'nodePoolAutoCreation.enabled' is set to true."
-
-- id: "gke_compute_class_database_tuning"
-  prompt: "How do I configure a ComputeClass for a high-performance Postgres database that needs specific kernel tunings?"
+  - The response suggests checking the ComputeClass status using 'kubectl describe
+    computeclass'.
+  - The response mentions inspecting Cluster Autoscaler visibility logs or events
+    ('kubectl get events').
+  - The response identifies common causes like stockouts, conflicting pod affinity/selectors,
+    or quota limits.
+  - The response recommends verifying that 'nodePoolAutoCreation.enabled' is set to
+    true.
+- id: gke_compute_class_database_tuning
+  prompt: How do I configure a ComputeClass for a high-performance Postgres database
+    that needs specific kernel tunings?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response recommends using 'nodeSystemConfig.linuxNodeConfig' for sysctls and hugepages."
-  - "The response mentions using 'machineFamily: n4' or similar performance-optimized families."
-  - "The response suggests configuring boot disk types (e.g., hyperdisk-balanced) to match performance needs."
-  - "The response mentions binding the ComputeClass to a manual node pool if zero-latency scheduling is required."
-
-- id: "gke_compute_class_gpu_toleration"
-  prompt: "I created a ComputeClass for L4 GPUs and assigned it to my Pod via nodeSelector, but it's stuck in Pending. The autoscaler logs show 'noScaleUp'. The node pool creates successfully if I do it manually. What is missing in my Pod spec?"
+  - The response recommends using 'nodeSystemConfig.linuxNodeConfig' for sysctls and
+    hugepages.
+  - 'The response mentions using ''machineFamily: n4'' or similar performance-optimized
+    families.'
+  - The response suggests configuring boot disk types (e.g., hyperdisk-balanced) to
+    match performance needs.
+  - The response mentions binding the ComputeClass to a manual node pool if zero-latency
+    scheduling is required.
+- id: gke_compute_class_gpu_toleration
+  prompt: I created a ComputeClass for L4 GPUs and assigned it to my Pod via nodeSelector,
+    but it's stuck in Pending. The autoscaler logs show 'noScaleUp'. The node pool
+    creates successfully if I do it manually. What is missing in my Pod spec?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response identifies that the Pod is missing the `nvidia.com/gpu: Exists` toleration."
-  - "The response explains that GKE auto-taints GPU nodes, so the toleration is required for scheduling."
-
-- id: "gke_compute_class_scaleupanyway_fallback"
-  prompt: "My ComputeClass has priorities for C3 and N4 nodes, but GKE is creating E2 nodes instead. Why is this happening and how do I strictly enforce my machine families?"
+  - 'The response identifies that the Pod is missing the `nvidia.com/gpu: Exists`
+    toleration.'
+  - The response explains that GKE auto-taints GPU nodes, so the toleration is required
+    for scheduling.
+- id: gke_compute_class_scaleupanyway_fallback
+  prompt: My ComputeClass has priorities for C3 and N4 nodes, but GKE is creating
+    E2 nodes instead. Why is this happening and how do I strictly enforce my machine
+    families?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response identifies that `whenUnsatisfiable: ScaleUpAnyway` causes GKE to fallback to E2 nodes."
-  - "The response recommends changing `whenUnsatisfiable` to `DoNotScaleUp` to strictly enforce the requested machine families."
-
-- id: "gke_compute_class_active_migration_blocked"
-  prompt: "I enabled `activeMigration: { optimizeRulePriority: true }` to move from On-Demand back to Spot. I see Spot capacity is available, but my Pods are still on On-Demand nodes. What could be preventing the migration?"
+  - 'The response identifies that `whenUnsatisfiable: ScaleUpAnyway` causes GKE to
+    fallback to E2 nodes.'
+  - The response recommends changing `whenUnsatisfiable` to `DoNotScaleUp` to strictly
+    enforce the requested machine families.
+- id: gke_compute_class_active_migration_blocked
+  prompt: 'I enabled `activeMigration: { optimizeRulePriority: true }` to move from
+    On-Demand back to Spot. I see Spot capacity is available, but my Pods are still
+    on On-Demand nodes. What could be preventing the migration?'
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response identifies Pod Disruption Budgets (PDBs) as a possible blocker."
-  - "The response explains that active migration respects PDBs and will not evict if it violates the budget."
-  - "The response explains that sometimes nodes cannot be consolidated (quickly) due to blocking system pods."
-  - "The response checks cluster autoscaler logs to look for entries around node consolidation blockers (often the culprit is system pods)."
-
-- id: "gke_compute_class_imagetype_bug"
-  prompt: "After adding `imageType: UBUNTU_CONTAINERD` to my ComputeClass, the autoscaler started creating hundreds of tiny, fragmented node pools. We are on GKE 1.33.4. What's wrong?"
+  - The response identifies Pod Disruption Budgets (PDBs) as a possible blocker.
+  - The response explains that active migration respects PDBs and will not evict if
+    it violates the budget.
+  - The response explains that sometimes nodes cannot be consolidated (quickly) due
+    to blocking system pods.
+  - The response checks cluster autoscaler logs for entries around node consolidation
+    blockers (often the culprit is system pods).
+  - The response correctly distinguishes between voluntary disruptions (which PDBs
+    block) and involuntary Spot preemptions.
+- id: gke_compute_class_imagetype_bug
+  prompt: 'After adding `imageType: UBUNTU_CONTAINERD` to my ComputeClass, the autoscaler
+    started creating hundreds of tiny, fragmented node pools. We are on GKE 1.33.4.
+    What''s wrong?'
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response identifies a known bug in pre-1.33.5 where ImageType causes excessive node pool creation."
-  - "The response recommends upgrading the GKE version or removing the `imageType` field."
-
-- id: "gke_compute_class_am_aggressiveness"
-  prompt: "We enabled activeMigration to save costs, but it's constantly evicting our pods to move them back to Spot, causing too many disruptions. How can we slow this down or stop it for certain critical pods?"
+  - The response identifies a known bug in pre-1.33.5 where ImageType causes excessive
+    node pool creation.
+  - The response recommends upgrading the GKE version or removing the `imageType`
+    field.
+- id: gke_compute_class_am_aggressiveness
+  prompt: We enabled activeMigration to save costs, but it's constantly evicting our
+    pods to move them back to Spot, causing too many disruptions. How can we slow
+    this down or stop it for certain critical pods?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response recommends using Pod Disruption Budgets (PDBs) to throttle the rate of evictions."
-  - "The response recommends using the 'cluster-autoscaler.kubernetes.io/safe-to-evict: \"false\"' annotation to completely stop AM disruptions for specific pods."
-
-- id: "gke_compute_class_reservation_fallback_bypass"
-  prompt: "Our ComputeClass has a reservation rule at the top, followed by a Spot fallback rule. However, when the reservation is full, the pods just stay pending or land on standard on-demand nodes instead of falling back to our Spot rule. Why isn't the fallback working?"
+  - The response recommends using Pod Disruption Budgets (PDBs) to throttle the rate
+    of evictions.
+  - 'The response recommends using the ''cluster-autoscaler.kubernetes.io/safe-to-evict:
+    "false"'' annotation to completely stop AM disruptions for specific pods.'
+  - The response explicitly warns that PDBs only protect against voluntary scale-down/migration,
+    NOT involuntary Spot preemptions.
+- id: gke_compute_class_reservation_fallback_bypass
+  prompt: Our ComputeClass has a reservation rule at the top, followed by a Spot fallback
+    rule. However, when the reservation is full, the pods just stay pending or land
+    on standard on-demand nodes instead of falling back to our Spot rule. Why isn't
+    the fallback working?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response asks or identifies if the reservation affinity is set to 'AnyBestEffort' or 'Automatic'."
-  - "The response explains that 'AnyBestEffort' falls back to On-Demand at the GCE layer, bypassing the ComputeClass fallback logic."
-  - "The response suggests switching to 'Specific' affinity with named reservations to allow proper ComputeClass fallback."
-
-- id: "gke_compute_class_balanced_ha_scaleup"
-  prompt: "We want to ensure our web frontend scales up in a balanced way across three zones (us-central1-a, b, c) for high availability using reservations. How do we configure the ComputeClass priorities to achieve roughly equal zonal distribution?"
+  - The response asks or identifies if the reservation affinity is set to 'AnyBestEffort'
+    or 'Automatic'.
+  - The response explains that 'AnyBestEffort' falls back to On-Demand at the GCE
+    layer, bypassing the ComputeClass fallback logic.
+  - The response suggests switching to 'Specific' affinity with named reservations
+    to allow proper ComputeClass fallback.
+- id: gke_compute_class_balanced_ha_scaleup
+  prompt: We want to ensure our web frontend scales up in a balanced way across three
+    zones (us-central1-a, b, c) for high availability using reservations. How do we
+    configure the ComputeClass priorities to achieve roughly equal zonal distribution?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response suggests that since reservations are zonal, we need a way to represent each zonal reservation in the balance."
-  - "The response suggests defining separate priority rules for each zone or using separate zonal node pools."
-  - "The response specifies assigning equal 'priorityScore' to all of the zonal priority rules."
-  - "The response explains that equal scores allow GKE to achieve roughly balanced scale up via round-robin selection."
-
-- id: "gke_compute_class_location_reservation_conflict"
-  prompt: "I'm getting an error on my ComputeClass status: 'location config with specific reservations enabled'. I have a global location block and a specific reservation block in my priority. How do I fix this?"
+  - The response suggests that since reservations are zonal, we need a way to represent
+    each zonal reservation in the balance.
+  - The response suggests defining separate priority rules for each zone or using
+    separate zonal node pools.
+  - The response specifies assigning equal 'priorityScore' to all of the zonal priority
+    rules.
+  - The response explains that equal scores allow GKE to achieve roughly balanced
+    scale up via round-robin selection.
+- id: gke_compute_class_location_reservation_conflict
+  prompt: 'I''m getting an error on my ComputeClass status: ''location config with
+    specific reservations enabled''. I have a global location block and a specific
+    reservation block in my priority. How do I fix this?'
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response instructs the user to remove the global 'location' block from the priority."
-  - "The response advises setting the zones directly within the 'reservations.specific[].zones' field instead."
-
-- id: "gke_compute_class_mixed_gen_pv_failure"
-  prompt: "Our StatefulSet has a ComputeClass that falls back from C3 nodes to N2 nodes. However, when it falls back to N2, the PersistentVolume fails to attach. What is causing this attachment failure?"
+  - The response instructs the user to remove the global 'location' block from the
+    priority.
+  - The response advises setting the zones directly within the 'reservations.specific[].zones'
+    field instead.
+- id: gke_compute_class_mixed_gen_pv_failure
+  prompt: Our StatefulSet has a ComputeClass that falls back from C3 nodes to N2 nodes.
+    However, when it falls back to N2, the PersistentVolume fails to attach. What
+    is causing this attachment failure?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response identifies the issue as mixing Gen 4 VMs (which use Hyperdisk) with Gen 2 VMs (which use standard PD)."
-  - "The response recommends not mixing Gen 2 and Gen 4 machine families in the same priority list for workloads with attached PersistentVolumes."
-
-- id: "gke_compute_class_excessive_priorities_loop"
-  prompt: "We defined an exhaustive ComputeClass with 15 different priorities. However, we notice that when the top priorities fail, it loops back and retries them before ever reaching the bottom safety floor, leaving pods pending. Why?"
+  - The response identifies the issue as mixing Gen 4 VMs (which use Hyperdisk) with
+    Gen 2 VMs (which use standard PD).
+  - The response recommends not mixing Gen 2 and Gen 4 machine families in the same
+    priority list for workloads with attached PersistentVolumes.
+- id: gke_compute_class_excessive_priorities_loop
+  prompt: We defined an exhaustive ComputeClass with 15 different priorities. However,
+    we notice that when the top priorities fail, it loops back and retries them before
+    ever reaching the bottom safety floor, leaving pods pending. Why?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response explains that upper-tier backoffs expire before the autoscaler reaches the bottom of the long list."
-  - "The response recommends trimming the priorities list to a maximum of around 10 entries."
-
-- id: "gke_compute_class_log_debugging"
-  prompt: "My ComputeClass isn't scaling up as expected. Where can I find the most detailed logs to debug why node pool auto-creation is skipping my priorities, and is there a tool to help me parse them?"
+  - The response explains that upper-tier backoffs expire before the autoscaler reaches
+    the bottom of the long list.
+  - The response recommends trimming the priorities list to a maximum of around 10
+    entries.
+- id: gke_compute_class_log_debugging
+  prompt: My ComputeClass isn't scaling up as expected. Where can I find the most
+    detailed logs to debug why node pool auto-creation is skipping my priorities,
+    and is there a tool to help me parse them?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response recommends checking the 'Cluster Autoscaler visibility logs' in Cloud Logging."
-  - "The response identifies the log ID as 'container.googleapis.com/cluster-autoscaler-visibility'."
-  - "The response recommends using the 'log-autoscaler-events.sh' script located in the assets directory to tail and parse these events."
-  
-- id: "karpenter_thrashing_translation"
-  prompt: "In Karpenter, our 'consolidateAfter: 10m' setting worked well, but in GKE with ComputeClasses, the active migration from On-Demand back to Spot is causing too much pod thrashing across our microservices. How do we globally slow down active migration across a ComputeClass without completely disabling it or modifying every single deployment with a PDB?"
+  - The response recommends checking the 'Cluster Autoscaler visibility logs' in Cloud
+    Logging.
+  - The response identifies the log ID as 'container.googleapis.com/cluster-autoscaler-visibility'.
+  - The response recommends using the 'log-autoscaler-events.sh' script located in
+    the assets directory to tail and parse these events.
+- id: karpenter_thrashing_translation
+  prompt: 'In Karpenter, our ''consolidateAfter: 10m'' setting worked well, but in
+    GKE with ComputeClasses, the active migration from On-Demand back to Spot is causing
+    too much pod thrashing across our microservices. How do we globally slow down
+    active migration across a ComputeClass without completely disabling it or modifying
+    every single deployment with a PDB?'
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response should identify if 'autoscalingPolicy.consolidationDelayMinutes' only affects scale-down."
-  - "The response should clarify that uning 'consolidationDelayMinutes' to a higher value (e.g., 10+ minutes) will not throttle activeMigration."
-  - "The response should acknowledge that while PDBs are the primary safety mechanism, adjusting the autoscaling policy only controls node consolidation."
-
-- id: "karpenter_spot_abstraction"
-  prompt: "With Karpenter, we could specify 5 different instance families and tell it to just 'pick the cheapest Spot instance available anywhere'. In GKE ComputeClasses, since priorities are evaluated sequentially, how do we configure the ComputeClass so that it strictly tries *every* Spot family (N4, C4, C3, N2, E2) across *all* zones based on the absolute lowest price *before* falling back to any On-Demand node?"
+  - The response should identify if 'autoscalingPolicy.consolidationDelayMinutes'
+    only affects scale-down.
+  - The response should clarify that uning 'consolidationDelayMinutes' to a higher
+    value (e.g., 10+ minutes) will not throttle activeMigration.
+  - The response should acknowledge that while PDBs are the primary safety mechanism,
+    adjusting the autoscaling policy only controls node consolidation.
+- id: karpenter_spot_abstraction
+  prompt: With Karpenter, we could specify 5 different instance families and tell
+    it to just 'pick the cheapest Spot instance available anywhere'. In GKE ComputeClasses,
+    since priorities are evaluated sequentially, how do we configure the ComputeClass
+    so that it strictly tries *every* Spot family (N4, C4, C3, N2, E2) across *all*
+    zones based on the absolute lowest price *before* falling back to any On-Demand
+    node?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response must recommend grouping all Spot families into a single tier using 'priorityScore'."
-  - "The response must explain that assigning the SAME 'priorityScore' (e.g., 100) to all Spot entries forces GKE to evaluate them together and tie-break by lowest unit cost."
-  - "The response must explain that the SAME 'priorityScore' (e.g., 100) can only be applied to a maximum of three rules."
-  - "The response should provide a YAML snippet showing multiple spot priorities with equal priority scores, followed by On-Demand priorities with lower scores."
-
-- id: "karpenter_disk_mapping"
-  prompt: "In Karpenter, we used 'blockDeviceMappings' to give our machine learning nodes 500GB local NVMe drives, but our fallback generic nodes just used 100GB EBS volumes. In a GKE ComputeClass, the 'nodePoolConfig' applies to the whole class. How do we configure our ComputeClass so that our top priority uses Local SSDs for scratch space, but the fallback priority uses standard 100GB persistent boot disks?"
+  - The response must recommend grouping all Spot families into a single tier using
+    'priorityScore'.
+  - The response must explain that assigning the SAME 'priorityScore' (e.g., 100)
+    to all Spot entries forces GKE to evaluate them together and tie-break by lowest
+    unit cost.
+  - The response must explain that the SAME 'priorityScore' (e.g., 100) can only be
+    applied to a maximum of three rules.
+  - The response should provide a YAML snippet showing multiple spot priorities with
+    equal priority scores, followed by On-Demand priorities with lower scores.
+- id: karpenter_disk_mapping
+  prompt: In Karpenter, we used 'blockDeviceMappings' to give our machine learning
+    nodes 500GB local NVMe drives, but our fallback generic nodes just used 100GB
+    EBS volumes. In a GKE ComputeClass, the 'nodePoolConfig' applies to the whole
+    class. How do we configure our ComputeClass so that our top priority uses Local
+    SSDs for scratch space, but the fallback priority uses standard 100GB persistent
+    boot disks?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response should clarify that while 'nodePoolConfig' sets defaults, storage can be overridden per-priority."
-  - "The response should recommend configuring the 'storage' block (or Local SSD specifically) within the individual 'priorities[]' entries."
-  - "The response should warn about the 'Mixed Gen PV Failure' trap if the workload uses attached PersistentVolumes across different storage types/families."
-
-- id: "karpenter_daemonset_blockers"
-  prompt: "In EKS, Karpenter sometimes struggled to scale down nodes if a DaemonSet didn't have the right tolerations for the spot nodes. In GKE with ComputeClasses, our Spot nodes are completely empty of workload pods, but they refuse to scale down. We suspect a DaemonSet. How do we force the autoscaler to ignore the DaemonSet and kill the node?"
+  - The response should clarify that while 'nodePoolConfig' sets defaults, storage
+    can be overridden per-priority.
+  - The response should recommend configuring the 'storage' block (or Local SSD specifically)
+    within the individual 'priorities[]' entries.
+  - The response should warn about the 'Mixed Gen PV Failure' trap if the workload
+    uses attached PersistentVolumes across different storage types/families.
+- id: karpenter_daemonset_blockers
+  prompt: In EKS, Karpenter sometimes struggled to scale down nodes if a DaemonSet
+    didn't have the right tolerations for the spot nodes. In GKE with ComputeClasses,
+    our Spot nodes are completely empty of workload pods, but they refuse to scale
+    down. We suspect a DaemonSet. How do we force the autoscaler to ignore the DaemonSet
+    and kill the node?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response should explain that DaemonSets are generally ignored by the GKE Cluster Autoscaler during scale-down by default."
-  - "The response should advise checking for other blockers (like 'safe-to-evict: false', local storage, or blocking system pods)."
-  - "The response should advise segregating non-daemonset system pods into their own ComputeClass to keep them from blocking consolidation."
-  - "The response should provide the cluster autoscaler log command to see the exact 'noScaleDown' reason."
-
-- id: "compute_class_kueue_integration"
-  prompt: "We are using Kueue to manage our AI training batch jobs on GKE. We want to route these jobs to a ComputeClass that falls back from DWS to Spot. How do we configure Kueue to automatically inject the correct ComputeClass configuration into the jobs?"
+  - The response should explain that DaemonSets are generally ignored by the GKE Cluster
+    Autoscaler during scale-down by default.
+  - 'The response should advise checking for other blockers (like ''safe-to-evict:
+    false'', local storage, or blocking system pods).'
+  - The response should advise segregating non-daemonset system pods into their own
+    ComputeClass to keep them from blocking consolidation.
+  - The response should provide the cluster autoscaler log command to see the exact
+    'noScaleDown' reason.
+- id: compute_class_kueue_integration
+  prompt: We are using Kueue to manage our AI training batch jobs on GKE. We want
+    to route these jobs to a ComputeClass that falls back from DWS to Spot. How do
+    we configure Kueue to automatically inject the correct ComputeClass configuration
+    into the jobs?
   metadata:
     products:
-    - "GKE"
+    - GKE
   rubric:
-  - "The response should recommend mapping a Kueue 'ResourceFlavor' to the ComputeClass."
-  - "The response should provide a YAML example of the 'ResourceFlavor' using 'nodeLabels' matching the ComputeClass name (e.g., 'cloud.google.com/compute-class: my-class')."
-  - "The response should explain that when Kueue admits the job, it automatically injects this nodeSelector, triggering the GKE Autoscaler to provision based on the ComputeClass fallback list."
+  - The response should recommend mapping a Kueue 'ResourceFlavor' to the ComputeClass.
+  - 'The response should provide a YAML example of the ''ResourceFlavor'' using ''nodeLabels''
+    matching the ComputeClass name (e.g., ''cloud.google.com/compute-class: my-class'').'
+  - The response should explain that when Kueue admits the job, it automatically injects
+    this nodeSelector, triggering the GKE Autoscaler to provision based on the ComputeClass
+    fallback list.
+- id: gke_compute_class_provisioning_vs_scheduling
+  prompt: I have a Spot-first ComputeClass. New pods keep scheduling onto existing
+    On-Demand nodes that have room, rather than spinning up new Spot nodes. How do
+    I fix this for my ML jobs?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Explains CCC controls node provisioning, not pod scheduling.
+  - Recommends 'activeMigration' to reconcile pods to higher-priority nodes.
+  - Mentions Kubernetes PriorityClass for pod-level scheduling/preemption.
+  - Mentions Kueue for batch/AI/ML workload queueing and fair-sharing.
