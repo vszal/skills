@@ -11,9 +11,11 @@ Controlled via `spec.autoscalingPolicy`.
 ## ActiveMigration (Drift)
 Reconciles pods back to higher-priority rules (similar to Karpenter drift).
 - `optimizeRulePriority: true`: Enables the drift controller.
-- **Disruption:** Honors PDBs. Without a PDB, eviction is uncontrolled.
+- **Disruption:** Honors PDBs (Voluntary disruption). Without a PDB, eviction is uncontrolled.
 - **Warning:** `maxUnavailable: 0` PDBs permanently block Active Migration.
 - **Trigger:** Higher-priority capacity becomes available.
+
+> **CRITICAL K8S DISTINCTION:** PDBs and `safe-to-evict: false` ONLY protect against *voluntary* disruptions (ActiveMigration, scale-down, upgrades). They **DO NOT** prevent *involuntary* Spot VM preemptions. Spot nodes can be reclaimed at any time, regardless of PDBs.
 
 ## Updating a ComputeClass
 - **No Retroactive Change:** Updating a ComputeClass does **not** change existing nodes.

@@ -44,7 +44,8 @@ Enable `activeMigration` to allow GKE to continuously move workloads to more cos
     optimizeRulePriority: true
 ```
 - If a workload falls back to an On-Demand node (because Spot was unavailable), active migration will automatically evict the pod and move it to a Spot node when Spot capacity returns.
-- **Throttling & Blocking Disruptions:** Active migration honors Pod Disruption Budgets (PDBs). Use PDBs to throttle the rate of eviction. If you need to completely stop active migration for specific critical pods, add the `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` annotation to the pod spec.
+- **Throttling Vol. Disruptions:** Active migration honors Pod Disruption Budgets (PDBs). Use PDBs to throttle eviction rates. To stop active migration for specific pods, add the `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` annotation.
+- **WARNING:** PDBs and `safe-to-evict` only block *voluntary* scaler actions. They **cannot** block *involuntary* Spot VM preemptions.
 
 ## Balanced HA Scale-Up (Round-Robin)
 If you need to achieve a roughly balanced, highly-available scale-up across multiple zones:

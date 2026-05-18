@@ -9,12 +9,13 @@ Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses.
 ComputeClasses depend on zone availability, CUDs, and workload constraints.
 **Do not block the user's initial request.** If asked for YAML/recommendations:
 1. **Provide Generalized Answer Immediately:** Fulfill request using best practices and placeholders (`<YOUR-ZONE-HERE>`). **MUST label initial YAML as `EXAMPLE TEMPLATE - DO NOT DEPLOY`.**
+    *   **CRITICAL AI/ML RULE:** DO NOT recommend Spot instances as the primary priority for AI/ML Inference, *even if the workload is stateless*. Accelerator node startup latency is severe. The correct priority is: `Reservations -> On-Demand -> DWS FlexStart -> Spot`.
 2. **Append Follow-Up Questions:** State that more context enables specific, cost-effective, reliable recommendations. Pin down missing context:
-   - **Workload Profile:** Stateful vs stateless, `activeMigration`.
+   *   **Workload Profile:** (Stateful vs stateless, use of `activeMigration`.)
    - **Cluster State:** Existing pools, auto-creation status.
    - **Financial Constraints:** CUDs for machine series.
    - **Infrastructure Constraints:** Target GCP region/zone.
-   - **Pod Requests:** Ensure templates have CPU/Memory requests (autoscaler requires them).
+   - **Pod Requests:** Ensure templates have CPU/Memory requests. NAC node sizing is based strictly on Pod *Requests*, not *Limits*.
 **Progressive Disclosure:** Do not guess syntax. Read reference files.
 
 ## Index
