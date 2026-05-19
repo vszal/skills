@@ -24,7 +24,7 @@ spec:
         transparentHugepageEnabled: TRANSPARENT_HUGEPAGE_ENABLED_NEVER
   priorities:
   # 1. Specific reservation — pre-paid, highest obtainability
-  - machineFamily: n4
+  - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
     minMemoryGb: 128
     spot: false
@@ -38,7 +38,7 @@ spec:
       bootDiskSize: 100
 
   # 2. On-Demand n4 highmem in same zone (PV affinity)
-  - machineFamily: n4
+  - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
     minMemoryGb: 128
     spot: false
@@ -49,7 +49,7 @@ spec:
       bootDiskSize: 100
 
   # 3. c4 fallback (still Gen 4, Hyperdisk-compatible) in same zone
-  - machineFamily: c4
+  - machineFamily: c4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
     minMemoryGb: 128
     spot: false

@@ -1,9 +1,9 @@
 # ComputeClass: Cost Optimization & FlexCUDs
 
-## Aligning with Flexible Committed Use Discounts (FlexCUDs)
-FlexCUDs provide predictable, high-value discounts in exchange for a commitment to spend a specific amount per hour across eligible machine types in a specific region.
+## Aligning with Committed Use Discounts (CUDs)
+Before selecting machine families for your `priorities[]` list, you **must** identify your existing Committed Use Discounts (CUDs) and Reservations.
 
-**Key Strategy:** The On-Demand "floor" of your ComputeClass should heavily bias toward machine families covered by your FlexCUDs.
+**Key Strategy:** The On-Demand "floor" of your ComputeClass should heavily bias toward machine families covered by your CUDs (Resource-based or Flexible).
 
 ### FlexCUD Coverage
 - **Eligible:** Most general-purpose and compute-optimized families (e.g., `N2`, `N4`, `C3`, `C4`, `E2`, `N2D`).
