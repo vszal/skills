@@ -6,7 +6,7 @@
 - **Disk Generation:**
     - **Gen 4** (`n4`, `c4`): Requires **Hyperdisk**.
     - **Gen 2** (`n2`, `c2`): Requires **Persistent Disk**.
-    - *Rule:* Don't mix Gen 2 and Gen 4 priorities for workloads with attached PVs (attach will fail on fallback).
+    - *Rule:* For stateful PV workloads, do NOT mix Gen 2 and Gen 4 priorities (fallback attach fails -> `ContainerCreating` trap).
     - *Reference:* [Asset: postgres-primary-compute-class.yaml](../assets/postgres-primary-compute-class.yaml)
 
 ## Provisioning Nuance
