@@ -19,6 +19,7 @@
 4. **node pool auto-creation Enabled?** Check `nodePoolAutoCreation.enabled: true`.
 5. **Visibility Logs:** Read `noDecisionStatus.noScaleUp` for exact rejection reason.
 6. **EKS to GKE Selector Translation:** If migrating from EKS/Karpenter, ensure the user translates AWS-style or generic selectors (`machine-family`) to GKE-native ones (`cloud.google.com/machine-family`). A common cause of `scale.up.no.scale.up` is a Pod asking for `machine-family: c3` while GKE only recognizes `cloud.google.com/machine-family: c3`.
+7. **Machine Series Support:** If node pool auto-creation fails to provision nodes for a specific `machineFamily` or `instance-type` (e.g., N4, C3A), verify the GKE version supports that series for node pool auto-creation / Autopilot. Old GKE versions will ignore unsupported series. Check GKE release notes or node pool auto-creation docs for version requirements.
 
 ## Finding Scale-down Blockers
 
