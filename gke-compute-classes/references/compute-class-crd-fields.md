@@ -17,7 +17,7 @@ spec:
 ## Top-Level Spec Fields
 | Field | Purpose | Default / Note |
 |-------|---------|----------------|
-| `nodePoolAutoCreation.enabled` | Enable dynamic pool creation (node pool auto-creation). | `false` |
+| `nodePoolAutoCreation.enabled` | Enable node pool auto-creation for this ComputeClass. **Does NOT require cluster-level Node Auto Provisioning.** | `false` |
 | `nodePoolConfig` | Defaults for node pool auto-creation pools (image, SA, labels, taints). | See below. |
 | `priorityDefaults` | Defaults applied to all `priorities[]` entries. | e.g. `zones`, `sysctls`. |
 | `priorities[]` | Ordered list of provisioning attempts. | Tried top-to-bottom. |
@@ -29,7 +29,7 @@ spec:
 Applied to pools created by the autoscaler.
 - `imageType`: `COS_CONTAINERD`, `UBUNTU_CONTAINERD`.
 - `nodeLabels`: Key-value pairs.
-- `taints`: List of `{ key, value, effect }`.
+- `taints`: List of `{ key, value, effect }`. **DO NOT add `cloud.google.com/compute-class` here; GKE applies and tolerates it automatically for node pool auto-creation.**
 - `serviceAccount`: Identity for nodes (use custom SA with least privilege, not default).
 
 ## `priorities[]` Fields

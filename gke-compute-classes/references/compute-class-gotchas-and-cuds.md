@@ -29,4 +29,4 @@ GKE allows only specific `sysctls` and `kubeletConfig` fields.
 
 ## Service Mesh / Networking Nuances
 - Nodes provisioned by ComputeClasses (especially via node pool auto-creation) must be compatible with existing network policies or service mesh (e.g., Anthos/Istio) sidecar requirements.
-- Ensure any required taints or labels for mesh injection or network traffic routing are included in the `nodePoolConfig`.
+- Ensure any required taints or labels for mesh injection or network traffic routing are included in the `nodePoolConfig`. **Do not add redundant ComputeClass taints here (`cloud.google.com/compute-class`); GKE manages it automatically for node pool auto-creation.** **Do not add redundant ComputeClass taints here (`cloud.google.com/compute-class`); GKE manages the ComputeClass taint automatically.**

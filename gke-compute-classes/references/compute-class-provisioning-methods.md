@@ -3,7 +3,7 @@
 ## node pool auto-creation vs. Manual Node Pools
 | Method | Description | Pinning via `nodepools` |
 |--------|-------------|-------------------------|
-| **node pool auto-creation** (Dynamic) | Autoscaler creates/deletes pools on demand. | ❌ (Ephemeral names) |
+| **node pool auto-creation** | Autoscaler creates/deletes pools dynamically at the ComputeClass level. **Does NOT require cluster-level Node Auto Provisioning.** | ❌ (Ephemeral names) |
 | **Manual** | Pre-provisioned by admin. Faster scheduling. | ✅ (Stable names) |
 
 1. Node pool is a GKE API resource, not a Kubernetes CRD.
@@ -11,7 +11,7 @@
 3. No way to set a prefix or custom name for auto-created node pools
 
 ### Custom Node Initialization
-ComputeClass Node Auto-Provisioning (node pool auto-creation) dynamically manages nodes and **does not natively support custom UserData or startup scripts** via the `nodePoolConfig`. To initialize nodes:
+ComputeClass node pool auto-creation dynamically manages nodes and **does not natively support custom UserData or startup scripts** via the `nodePoolConfig`. To initialize nodes:
 1. **Privileged DaemonSets (Recommended):** Deploy a DaemonSet with an `initContainer` to perform host-level setup or install proprietary monitoring agents.
 2. **Custom OS Images:** GKE supports custom OS images via the [gke-custom-image-builder](https://github.com/GoogleCloudPlatform/gke-custom-image-builder-cos) (Private preview; contact account team), though DaemonSets are the primary K8s-native workaround.
 
@@ -32,7 +32,7 @@ gcloud container node-pools update <POOL> \
     --node-labels="cloud.google.com/compute-class=<CLASS-NAME>" \
     --node-taints="cloud.google.com/compute-class=<CLASS-NAME>:NoSchedule"
 ```
-ComputeClass auto-tolerates these taints; workloads do **not** need matching tolerations.
+When using node pool auto-creation, ComputeClasses auto-tolerate these taints; workloads do **not** need matching tolerations.
 
 ## Default Class Selection
 - **Cluster Default:** Create ComputeClass named `default` + enable feature on cluster.
