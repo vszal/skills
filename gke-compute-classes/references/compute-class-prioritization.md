@@ -9,7 +9,7 @@
 ## Fallback Patterns
 | Pattern | Priority Order | Rationale | Asset |
 |---|---|---|---|
-| Inference | Res -> Spot -> DWS -> OD | Spot instant capacity; replicas mask preemption. | `genai-inference-g4-compute-class.yaml` |
+| Inference | Res -> OD -> DWS -> Spot | Accelerator node startup is slow. Avoid Spot preemption risk for latency-sensitive serving. | `genai-inference-g4-compute-class.yaml` |
 | Prod Training | Res -> DWS -> OD -> Spot | DWS wait acceptable. Spot preemption disruptive. | `tpu-v5e-training-compute-class.yaml` |
 | Dev Training | Spot -> OD | Spot for cost; OD floor unblocks dev. | |
 | Cost Batch | Spot -> OD | Use `priorityScore` to pick cheapest Spot family. | `spot-cost-tiebreak-compute-class.yaml` |

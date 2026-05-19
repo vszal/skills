@@ -67,6 +67,14 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 - **Cause:** >10 priorities. Unobtainable shapes enter a 5-minute cooldown. Long lists expire upper-tier cooldowns before reaching the bottom, causing an infinite loop.
 - **Fix:** Trim list; remove redundant rules.
 
+## Symptom 12: Pods on Low-Priority Nodes
+- **Symptom:** Pods land on existing low-priority nodes (e.g., On-Demand) instead of triggering scale-up for available high-priority nodes (e.g., Spot).
+- **Cause:** ComputeClass controls *node provisioning*, not *pod scheduling*. K8s schedules pods on any existing node with capacity before scaling up.
+- **Fix:** 
+  1. **ActiveMigration:** Set `optimizeRulePriority: true` to eventually move workloads to higher-priority nodes.
+  2. **PriorityClass:** Use native K8s PriorityClass for pod-level preemption.
+  3. **Kueue:** Use Kueue for complex batch/AI/ML fair-sharing and queueing.
+
 ## Useful Commands
 ```bash
 kubectl get nodes -L cloud.google.com/compute-class

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Live tail of GKE cluster autoscaler visibility logs for a single cluster.
-# Surfaces both successful scale events (scale-ups, NAP node-pool creations,
+# Surfaces both successful scale events (scale-ups, node pool auto-creation node-pool creations,
 # scale-downs) and failures / stalls (per-MIG scale-up errors, noScaleUp,
 # noScaleDown). Polls every $POLL_INTERVAL_SECS, colorizes terminal output,
 # and appends a plain-text copy to the log file.
@@ -70,7 +70,7 @@ POLL_INTERVAL_SECS=10
 C_RED=$'\033[31m'    # errors
 C_YELLOW=$'\033[33m' # stalls (noScaleUp / noScaleDown)
 C_GREEN=$'\033[32m'  # successful scale-up
-C_CYAN=$'\033[36m'   # node-pool created (NAP)
+C_CYAN=$'\033[36m'   # node-pool created (node pool auto-creation)
 C_BLUE=$'\033[34m'   # scale-down
 C_RESET=$'\033[0m'
 
@@ -104,7 +104,7 @@ echo "========================================================================="
 while true; do
   # Visibility log shapes (per docs):
   #   decision.scaleUp                 successful scale-up of existing MIGs
-  #   decision.nodePoolCreated         NAP created a new node pool
+  #   decision.nodePoolCreated         node pool auto-creation created a new node pool
   #   decision.scaleDown               scale-down (node removal)
   #   noDecisionStatus.noScaleUp       pending pods nothing could host
   #   noDecisionStatus.noScaleDown     scale-down blocked (per-node reasons)
@@ -160,7 +160,7 @@ while true; do
             emit "$C_GREEN" "$line"
           done
 
-      # 2. NAP created a new node pool
+      # 2. node pool auto-creation created a new node pool
       echo "$entry" | jq -c '.jsonPayload.decision.nodePoolCreated.nodePools[]?' \
         | while read -r np; do
             name=$(echo "$np" | jq -r '.name // "unknown"')
