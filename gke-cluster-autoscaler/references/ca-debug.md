@@ -18,6 +18,7 @@ For a continuous live tail of all autoscaler decisions — successful scale-ups,
 3. **Selector Conflict?** Pod Pins `gke-spot=true` while ComputeClass is On-Demand.
 4. **node pool auto-creation Enabled?** Check `nodePoolAutoCreation.enabled: true`.
 5. **Visibility Logs:** Read `noDecisionStatus.noScaleUp` for exact rejection reason.
+6. **EKS to GKE Selector Translation:** If migrating from EKS/Karpenter, ensure the user translates AWS-style or generic selectors (`machine-family`) to GKE-native ones (`cloud.google.com/machine-family`). A common cause of `scale.up.no.scale.up` is a Pod asking for `machine-family: c3` while GKE only recognizes `cloud.google.com/machine-family: c3`.
 
 ## Finding Scale-down Blockers
 Workload-side blockers often prevent the autoscaler from consolidating nodes even when they are underutilized.
