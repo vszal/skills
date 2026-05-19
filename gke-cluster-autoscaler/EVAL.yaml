@@ -1,0 +1,80 @@
+scenarios:
+  - name: spot-stockout
+    prompt: "Our new deployment has pods stuck in Pending. We enabled node pool auto-creation on our cluster and set it to use only Spot instances. The autoscaler logs show `scale.up.error.out.of.resources`. How do we fix this?"
+    expected_output: "Explain that GCE Spot capacity is exhausted and recommend adding a fallback to On-Demand in the ComputeClass priorities, deferring to the gke-compute-class skill."
+
+  - name: emptydir-scale-down-blocker
+    prompt: "We are trying to reduce costs, but our nodes are staying up even though CPU utilization is under 20%. The workloads are just simple deployments. We checked and some pods have emptyDir volumes. Why won't the cluster autoscaler scale down the nodes?"
+    expected_output: "Explain that emptyDir local storage blocks the cluster autoscaler from evicting pods. Recommend either using network PVs or adding the `cluster-autoscaler.kubernetes.io/safe-to-evict: \"true\"` annotation if the data is disposable."
+
+  - name: karpenter-migration
+    prompt: "We migrated from EKS. In EKS we used Karpenter for fast node provisioning. Now on GKE 1.33.4, we want automatic node provisioning. What's the recommended way to enable it and how do we ensure fast scale down?"
+    expected_output: "Recommend using ComputeClasses with `spec.nodePoolAutoCreation.enabled: true` as the preferred method for GKE 1.33.3+. Recommend the `optimize-utilization` autoscaling profile and `consolidationDelayMinutes` in the ComputeClass to ensure fast scale-down. Avoid suggesting cluster-level Node Auto Provisioning."
+
+  - name: selector-mismatch
+    prompt: "Our cluster autoscaler isn't scaling up. The events say 'no scale up'. We have a node selector for `machine-family: c3` on our Pod, but our node pool is n4. How do we configure the autoscaler to fix this?"
+    expected_output: "Explain the selector conflict. Recommend using node pool auto-creation via ComputeClass configured with `machineFamily: c3` or removing the node selector to match the existing pool."
+
+  - name: system-pod-segregation
+    prompt: "We have an issue where our system pods like coreDNS keep getting scheduled on our expensive GPU nodes and blocking them from scaling down. What's the best practice to segregate system pods in GKE?"
+    expected_output: "Recommend applying a default 'cheap' ComputeClass to the kube-system namespace using the annotation `cloud.google.com/default-compute-class-non-daemonset: system-pool`."
+
+  - name: topology-spread-ha
+    prompt: "We are deploying an HA web app and want to ensure pods are spread evenly across 3 zones. The pods are pending but the cluster autoscaler is not spinning up nodes in all zones. Our Pod topology spread constraint just uses maxSkew: 1."
+    expected_output: "Explain that for the cluster autoscaler to respect Pod Topology Spread constraints during scale-up, the constraint MUST include `whenUnsatisfiable: DoNotSchedule`."
+
+  - name: spot-location-policy
+    prompt: "We use Spot VMs via node pool auto-creation. Often, scale-ups fail because it tries to provision in a zone that is out of stock, even though other zones have capacity. How do we make it grab Spot VMs from any zone?"
+    expected_output: "Recommend setting `location.locationPolicy: ANY` in the ComputeClass priorities to maximize obtainability for Spot instances."
+
+  - name: ha-location-policy
+    prompt: "We are using node pool auto-creation for an On-Demand workload that must be highly available. Sometimes it spins up 5 nodes in zone A and only 1 in zone B. How can we force balanced node provisioning?"
+    expected_output: "Recommend setting `location.locationPolicy: BALANCED` in the ComputeClass to ensure the autoscaler distributes nodes evenly across available zones."
+
+  - name: quota-exhaustion
+    prompt: "A large batch job just launched, but the autoscaler stopped creating new nodes. The visibility logs show `scale.up.error.quota.exceeded`. What does this mean?"
+    expected_output: "Explain that the GCP Project has hit its regional compute quota limits (e.g., CPUs or IP addresses). Recommend requesting a quota increase in the Google Cloud Console."
+
+  - name: max-nodes-limit
+    prompt: "The cluster autoscaler is not scaling up to accommodate our new pods. We checked the logs and it doesn't say out of resources, but we have `max-nodes: 10` on our manual node pool and there are currently 10 nodes. How do we fix this?"
+    expected_output: "Explain that the autoscaler has hit the hard `--max-nodes` limit configured on the manual node pool. Recommend updating the node pool with a higher maximum using `gcloud container node-pools update`."
+
+  - name: pdb-scale-down-blocker
+    prompt: "Nodes are significantly underutilized (15% CPU) for hours, but they aren't being removed. We checked for emptyDir and bare pods, but found nothing. However, `kubectl get pdb` shows `disruptionsAllowed: 0` for our main application. Is this related?"
+    expected_output: "Explain that a PodDisruptionBudget with 0 allowed disruptions strictly blocks the cluster autoscaler from voluntarily evicting those pods, preventing node consolidation. Recommend adjusting the PDB."
+
+  - name: bare-pod-blocker
+    prompt: "I ran a pod using `kubectl run temp-debug --image=busybox -- sleep 3600`. The node it landed on is otherwise empty, but the cluster autoscaler refuses to scale it down. Why?"
+    expected_output: "Explain that 'bare pods' (pods without a controller like a Deployment or Job) are not safe to evict because they will not be rescheduled. The autoscaler skips nodes containing bare pods."
+
+  - name: consolidation-thrashing
+    prompt: "Our bursty web traffic causes the autoscaler to scale up quickly, but then it immediately tries to scale down nodes during 30-second lulls, only to need them again a minute later. How can we stabilize this?"
+    expected_output: "Recommend increasing the `consolidationDelayMinutes` (e.g., to 5 or 10 minutes) in the ComputeClass `autoscalingPolicy` to prevent thrashing during brief traffic lulls."
+
+  - name: capacity-buffer-prewarm
+    prompt: "When traffic spikes, our HPA scales up pods, but it takes 90 seconds for node pool auto-creation to provision a new node. We need nodes to be ready immediately. We don't want to use `--min-nodes` because we want it tied to our ComputeClass. What can we do?"
+    expected_output: "Recommend using the `CapacityBuffer` CRD to keep warm, standby capacity ready. This provisions dummy pods that are evicted instantly when real workloads arrive."
+
+  - name: ip-exhaustion
+    prompt: "Scale-ups are failing with `scale.up.error.ip.space.exhausted` in the autoscaler visibility logs. Our nodes have plenty of capacity, but no new nodes are being created."
+    expected_output: "Explain that the Pod IP subnet is full, meaning no new nodes can be assigned a Pod CIDR block. Recommend expanding the secondary IP range for Pods in the VPC."
+
+  - name: zonal-pvc-deadlock
+    prompt: "We have a StatefulSet that dynamically provisions GCE Persistent Disks. Pods are stuck Pending because the PVC was provisioned in zone-a, but the cluster autoscaler only found node capacity in zone-b. How do we prevent this deadlock?"
+    expected_output: "Recommend setting `volumeBindingMode: WaitForFirstConsumer` in the StorageClass. This forces the disk to wait to provision until the cluster autoscaler selects a node zone."
+
+  - name: optimize-utilization-profile
+    prompt: "Our cluster is running with the 'balanced' autoscaling profile. We want to aggressively cut costs by packing pods tightly and scaling down nodes as fast as possible, even if it risks some rescheduling latency. What should we change?"
+    expected_output: "Recommend switching the cluster-wide autoscaling profile to `optimize-utilization` using the `gcloud container clusters update` command."
+
+  - name: pool-fragmentation
+    prompt: "We created 250 different ComputeClasses for various tiny workload variations. Now the cluster autoscaler seems very sluggish, and scale-up decisions are taking minutes instead of seconds."
+    expected_output: "Explain that a massive number of node pools/ComputeClasses degrades cluster autoscaler performance. Recommend consolidating similar shapes into fewer ComputeClasses using intent-based sizing (e.g., `machineFamily: n4` instead of strict SKUs)."
+
+  - name: spot-grace-period
+    prompt: "When Spot instances are preempted by GCE, our workloads need about 90 seconds to safely flush data to the database before shutting down, but they are getting killed too fast. We are on GKE 1.35."
+    expected_output: "Recommend extending the Spot node termination grace period by setting `shutdownGracePeriodSeconds: 120` in the `kubeletConfig` section of the ComputeClass."
+
+  - name: explicit-scale-down-pin
+    prompt: "We have an old legacy app. Someone added the annotation `cluster-autoscaler.kubernetes.io/safe-to-evict: \"false\"` to it years ago. The node it runs on is 90% empty but won't scale down. What does this annotation do?"
+    expected_output: "Explain that this annotation explicitly pins the pod (and consequently the node it resides on) from ever being voluntarily evicted by the cluster autoscaler. Recommend removing it if the app can handle standard termination."
