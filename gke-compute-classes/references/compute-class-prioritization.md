@@ -19,5 +19,6 @@
 - **No repetition:** Doesn't improve obtainability.
 - **Vary dimensions:** Zone, Family, Capacity (Spot/OD).
 - **Always include a floor:** End with high-availability OD (e.g., N4/E2) to prevent `Pending`.
+- **Stateful Gen Isolation:** For PV workloads, do NOT mix hardware generations (e.g., all Gen 4 OR all Gen 2) in `priorities[]`. Mixing causes Hyperdisk vs PD attachment failures.
 - **Mixed Architectures:** Mix ARM (`n4a`) and x86 (`n4`) in `priorities[]`. Autoscaler skips incompatible shapes based on Pod constraints. **Must use multi-platform image builds.**
 - **Spot Availability:** For CPU, if OD is out, Spot usually is too. For Accelerators, Spot often has capacity when OD doesn't.

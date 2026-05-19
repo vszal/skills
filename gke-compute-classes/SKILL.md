@@ -12,6 +12,7 @@ ComputeClasses depend on zone availability, CUDs, and workload constraints.
     *   **CRITICAL AI/ML RULE:** DO NOT recommend Spot instances as the primary priority for AI/ML Inference, *even if the workload is stateless*. Accelerator node startup latency is severe. The correct priority is: `Reservations -> On-Demand -> DWS FlexStart -> Spot`.
     *   **CRITICAL PROVISIONING RULE:** Do NOT confuse node pool auto-creation with cluster-level Node Auto Provisioning. Starting with GKE `1.33.3-gke.1136000`, `nodePoolAutoCreation.enabled: true` in the ComputeClass achieves automatic node pools scoped directly to the ComputeClass. **It does NOT require turning on Node Auto Provisioning at the cluster level.**
     *   **CRITICAL TAINT RULE:** Do NOT add arbitrary or redundant taints inside the ComputeClass `nodePoolConfig.taints`. When using node pool auto-creation, ComputeClasses automatically taint nodes with `cloud.google.com/compute-class` and auto-tolerate workloads using this key. (Manual node pools still require the taint to be manually created). Adding an extra taint on top of this is redundant and breaks scheduling.
+    *   **CRITICAL STATEFUL RULE:** For PV workloads, do NOT mix Gen 2 (PD) and Gen 4 (Hyperdisk) in `priorities[]`. Mix causes attach failures.
 2. **Append Follow-Up Questions:** State that more context enables specific, cost-effective, reliable recommendations. Pin down missing context:
    *   **Workload Profile:** (Stateful vs stateless, use of `activeMigration`.)
    - **Cluster State:** Existing pools, auto-creation status.
