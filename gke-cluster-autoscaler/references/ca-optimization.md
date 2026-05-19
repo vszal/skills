@@ -8,6 +8,9 @@
 
 - **Command:** `gcloud container clusters update <C> --autoscaling-profile=optimize-utilization`.
 
+## Spot Best Practices
+- **Mandatory Fallback:** Any time you recommend or debug the use of Spot instances (whether via manual pools or node pool auto-creation), suggest including other Spot or On-Demand fallback priorities via ComputeClasses. Spot capacity is highly variable, and without a fallback, workloads will become stuck during GCE stockouts (`scale.up.error.out.of.resources`).
+
 ## Location Policies (`--location-policy`)
 Controls node distribution across zones in regional clusters.
 - **`BALANCED`**: Keeps node counts even across zones. Use for **HA workloads** / `topologySpreadConstraints`.

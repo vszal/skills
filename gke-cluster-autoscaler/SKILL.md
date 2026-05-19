@@ -5,6 +5,9 @@ description: Manage and troubleshoot GKE node autoscaling, node auto-provisionin
 
 # GKE Cluster Autoscaler
 
+## CRITICAL RULES (MUST FOLLOW)
+- **NO ACRONYMS:** Do NOT use the acronyms `CA` (Cluster Autoscaler), `NAP` (Node Auto Provisioning), `NAC` (Node Pool Auto Creation), or `CCC` (ComputeClass). Spell them out fully. This is critical for maintaining documentation consistency and searchability across the ecosystem.
+
 **Overlap Warning:** For questions about `ComputeClass`, node pool auto-creation (`NodePoolAutoCreation`), or prioritization, **activate and defer to the `gke-compute-class` skill**.
 
 Manage node-level scaling for GKE clusters, including standard cluster autoscaler and automatic node provisioning.
