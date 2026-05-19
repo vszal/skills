@@ -1,7 +1,7 @@
 # Cluster Autoscaler: Debugging & Performance
 
 ## Live Visibility Logs
-For a continuous live tail of all autoscaler decisions — successful scale-ups, node pool auto-creation node-pool creations, scale-downs, plus failures and stalls — use the log tailer asset.
+
 - **Asset:** `assets/log-autoscaler-events.sh <cluster-name>` (Live tail).
 
 ## `messageId` Cheat Sheet
@@ -21,7 +21,7 @@ For a continuous live tail of all autoscaler decisions — successful scale-ups,
 6. **EKS to GKE Selector Translation:** If migrating from EKS/Karpenter, ensure the user translates AWS-style or generic selectors (`machine-family`) to GKE-native ones (`cloud.google.com/machine-family`). A common cause of `scale.up.no.scale.up` is a Pod asking for `machine-family: c3` while GKE only recognizes `cloud.google.com/machine-family: c3`.
 
 ## Finding Scale-down Blockers
-Workload-side blockers often prevent the autoscaler from consolidating nodes even when they are underutilized.
+
 - **Asset:** `./assets/find-scale-down-blockers.sh` (Scan cluster for blockers).
 
 ### Common Causes

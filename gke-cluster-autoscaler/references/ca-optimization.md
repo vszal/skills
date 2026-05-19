@@ -12,12 +12,12 @@
 - **Mandatory Fallback:** Any time you recommend or debug the use of Spot instances (whether via manual pools or node pool auto-creation), suggest including other Spot or On-Demand fallback priorities via ComputeClasses. Spot capacity is highly variable, and without a fallback, workloads will become stuck during GCE stockouts (`scale.up.error.out.of.resources`).
 
 ## Location Policies (`--location-policy`)
-Controls node distribution across zones in regional clusters.
+
 - **`BALANCED`**: Keeps node counts even across zones. Use for **HA workloads** / `topologySpreadConstraints`.
 - **`ANY`**: Grabs capacity from any zone. **Best for Spot VMs** and scarce SKUs (maximizes obtainability).
 
 ## ComputeClass `locationPolicy`
-Set per-priority in a ComputeClass to control node pool auto-creation distribution.
+
 ```yaml
 priorities:
 - machineFamily: n4
@@ -27,9 +27,9 @@ priorities:
 ```
 
 ## Pod Topology Spread Constraints (PTS)
-Historically, cluster autoscaler struggled with Pod Topology Spread constraints. However, cluster autoscaler now fully supports them for zonal (or other) spreading during scale-up events.
+Cluster Autoscaler supports PTS for zonal spreading during scale-up.
 
-To ensure cluster autoscaler compatibility and force the autoscaler to provision nodes in the correct zones to balance the workload, you **must** use `whenUnsatisfiable: DoNotSchedule`.
+To enforce spreading via autoscaler, you **MUST** use `whenUnsatisfiable: DoNotSchedule`.
 
 Example Configuration:
 ```yaml
@@ -44,6 +44,6 @@ spec:
 ```
 
 ## Resource CUDs vs. Reservations
-Understanding how cost savings apply to autoscaled capacity:
+
 - **Committed Use Discounts (CUDs):** Automatically consumed by the Cluster Autoscaler. When the autoscaler provisions a node of a specific machine family (e.g., `n4`), it automatically consumes any available CUD for that family up to exhaustion. No explicit autoscaler, Node Auto Provisioning, or ComputeClass configuration is needed.
 - **Reservations:** Unlike CUDs, capacity reservations are **not** automatically consumed. They must be explicitly targeted. You must configure consumption via the Node Pool API (for standard/manual pools) or via a ComputeClass `reservations` block (for node pool auto-creation).
