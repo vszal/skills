@@ -1,5 +1,5 @@
 # Capacity Buffer for a serving ComputeClass — pre-warms node capacity so
-# bursty pods don't pay the NAC pool-creation latency on the fast path.
+# bursty pods don't pay the node pool auto-creation pool-creation latency on the fast path.
 #
 # Resource: autoscaling.x-k8s.io/v1beta1 CapacityBuffer (a CRD; kubectl-only,
 # no gcloud surface). See gke-cluster-autoscaling-optimize.md → Capacity Buffers.
@@ -30,7 +30,7 @@ metadata:
 template:
   spec:
     nodeSelector:
-      cloud.google.com/compute-class: serving-class    # buffer matches the target CCC
+      cloud.google.com/compute-class: serving-class    # buffer matches the target ComputeClass
     containers:
     - name: pause
       image: registry.k8s.io/pause:3.10

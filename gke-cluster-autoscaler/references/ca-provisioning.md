@@ -1,8 +1,8 @@
-# CA: Provisioning & Strategies
+# Cluster Autoscaler: Provisioning & Strategies
 
 ## Enabling Scaling (Standard)
 
-### Cluster Autoscaler (CA) - Per Pool
+### cluster autoscaler - Per Pool
 Adds/removes nodes within `[min, max]` for an existing pool.
 - **Enable (New Pool):**
   ```bash
@@ -16,7 +16,7 @@ Adds/removes nodes within `[min, max]` for an existing pool.
     --min-nodes=1 --max-nodes=10
   ```
 
-### Node Auto-Provisioning (NAP) - Cluster-wide
+### Node Auto Provisioning - Cluster-wide
 Creates **new node pools** within cluster-wide resource caps.
 - **Enable:**
   ```bash
@@ -26,24 +26,24 @@ Creates **new node pools** within cluster-wide resource caps.
     --min-memory=16 --max-memory=800
   ```
 
-### Node Pool Auto-Creation (NAC) - Per ComputeClass
-Preferred for per-workload shape control. Scoped to a CCC.
+### Node pool auto-creation - Per ComputeClass
+Preferred for per-workload shape control. Scoped to a ComputeClass.
 - **Enable:** Set `nodePoolAutoCreation.enabled: true` in the ComputeClass.
-- **GKE 1.33.3+:** Works without cluster-wide NAP enabled.
+- **GKE 1.33.3+:** Works without cluster-wide Node Auto Provisioning enabled.
 
 ## Provisioning Strategies
 
 | Strategy | Strengths | Use Case |
 |----------|-----------|----------|
 | **Manual Pools** | Fast scheduling; Stable names. | Latency-sensitive; manual management. |
-| **NAC (CCC)** | Best obtainability; Scale-to-zero. | Bursty; batch; cost-sensitive. |
-| **Hybrid** | Manual pool at top; NAC fallback. | **Recommended for Production.** |
+| **node pool auto-creation (ComputeClass)** | Best obtainability; Scale-to-zero. | Bursty; batch; cost-sensitive. |
+| **Hybrid** | Manual pool at top; node pool auto-creation fallback. | **Recommended for Production.** |
 
-## Cutover: NAP to NAC
-1. **Apply CCCs:** Create classes with `nodePoolAutoCreation.enabled: true`.
+## Cutover: Node Auto Provisioning to node pool auto-creation
+1. **Apply ComputeClasses:** Create classes with `nodePoolAutoCreation.enabled: true`.
 2. **Opt Workloads In:** Apply `nodeSelector: cloud.google.com/compute-class: <name>`.
-3. **Drain Old Pools:** `kubectl drain` nodes in old NAP-managed pools.
+3. **Drain Old Pools:** `kubectl drain` nodes in old Node Auto Provisioning-managed pools.
 
 ## Scale-to-Zero Behavior
-- **Manual Pools:** Standard CA keeps ≥1 node unless empty pool deletion is supported/enabled.
-- **NAC-managed:** Autoscaler can delete the entire pool when empty.
+- **Manual Pools:** Standard cluster autoscaler keeps ≥1 node unless empty pool deletion is supported/enabled.
+- **node pool auto-creation-managed:** Autoscaler can delete the entire pool when empty.
