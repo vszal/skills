@@ -78,3 +78,7 @@ scenarios:
   - name: explicit-scale-down-pin
     prompt: "We have an old legacy app. Someone added the annotation `cluster-autoscaler.kubernetes.io/safe-to-evict: \"false\"` to it years ago. The node it runs on is 90% empty but won't scale down. What does this annotation do?"
     expected_output: "Explain that this annotation explicitly pins the pod (and consequently the node it resides on) from ever being voluntarily evicted by the cluster autoscaler. Recommend removing it if the app can handle standard termination."
+
+  - name: unsupported-machine-family
+    prompt: "We recently tried to use the new N4 machine family with node pool auto-creation on our GKE cluster running version 1.30. The pods stay Pending and the autoscaler logs show 'no scale up'. Why isn't it provisioning N4 nodes?"
+    expected_output: "Explain that the GKE version (1.30) likely does not support the N4 machine series for node pool auto-creation or Autopilot. Recommend checking the GKE release notes or node pool auto-creation documentation for the required minimum version to use N4."
