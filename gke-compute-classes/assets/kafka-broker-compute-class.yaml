@@ -3,14 +3,9 @@ kind: ComputeClass
 metadata:
   name: kafka-broker
 spec:
-  description: "Kafka broker — multi-zone, local SSD for page cache and segment scratch, Hyperdisk durable boot, all-Gen-4, no Spot."
+  # Kafka broker — multi-zone, local SSD for page cache and segment scratch, Hyperdisk durable boot, all-Gen-4, no Spot.
   nodePoolAutoCreation:
     enabled: true
-  nodePoolConfig:
-    imageStreaming:
-      enabled: true
-    gvnic:
-      enabled: true
   priorityDefaults:
     location:
       zones: ['us-central1-a', 'us-central1-b', 'us-central1-c']
@@ -20,7 +15,6 @@ spec:
           net.core.somaxconn: 4096
           vm.max_map_count: 262144   # Kafka mmaps many log segments
           fs.file-max: 1000000       # broker holds many open file descriptors
-        transparentHugepageEnabled: TRANSPARENT_HUGEPAGE_ENABLED_MADVISE
   priorities:
   # 1. n4 with local SSD for page cache + segment scratch
   - machineFamily: n4

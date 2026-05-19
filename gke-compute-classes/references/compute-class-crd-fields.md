@@ -27,7 +27,7 @@ spec:
 
 ## `nodePoolConfig` (node pool auto-creation Only)
 Applied to pools created by the autoscaler.
-- `imageType`: `COS_CONTAINERD`, `UBUNTU_CONTAINERD`.
+- `imageType`: `cos_containerd`, `ubuntu_containerd` (must be **lowercase**).
 - `nodeLabels`: Key-value pairs.
 - `taints`: List of `{ key, value, effect }`. **DO NOT add `cloud.google.com/compute-class` here; GKE applies and tolerates it automatically for node pool auto-creation.**
 - `serviceAccount`: Identity for nodes (use custom SA with least privilege, not default).
@@ -42,9 +42,17 @@ Applied to pools created by the autoscaler.
 - `gpu` / `tpu`: Accelerator requests (count, type, topology).
 - `nodepools`: (Standard Only) List of manual pool names to target.
 - `nodeSystemConfig`: 
-  - `linuxNodeConfig`: `sysctls` (e.g., `net.core.somaxconn: "4096"`) and `transparentHugepageEnabled`.
-  - `kubeletConfig`: `shutdownGracePeriodSeconds` (extend Spot termination grace period up to 120s on GKE 1.35+).
-- `storage`: Set `bootDiskType`, `bootDiskSizeGb`, and `localSsdCount` specifically for this priority. Overrides cluster/nodePoolConfig defaults.
+  - `linuxNodeConfig`: `sysctls` (e.g., `net.ipv4.tcp_tw_reuse: true`, `net.core.somaxconn: 4096`). **Never quote integer or boolean values.**
+  - `kubeletConfig`: `cpuCfsQuota`, `podPidsLimit`, etc.
+- `storage`: Set `bootDiskType`, `bootDiskSize`, and `localSSDCount` specifically for this priority. Overrides cluster/nodePoolConfig defaults.
+
+## Important Schema Constraints
+- **Case Sensitivity**: `imageType` must be lowercase (e.g., `cos_containerd`).
+- **Field Hallucinations**: NEVER use `spec.description`, `gvnic`, `transparentHugepageEnabled`, or `shutdownGracePeriodSeconds`. They do not exist in the CRD.
+- **YAML Formatting**: ALWAYS use literal integers for fields like `bootDiskSize`, `minCores`, and `somaxconn`. **DO NOT wrap them in quotes.**
+  - **Correct**: `bootDiskSize: 50`
+  - **Incorrect**: `bootDiskSize: "50"`
+- **Storage**: Use `bootDiskSize`, NOT `bootDiskSizeGb`.
 
 ## `whenUnsatisfiable`
 - `DoNotScaleUp` (Default): Pods stay `Pending`. Best for specific hardware needs.

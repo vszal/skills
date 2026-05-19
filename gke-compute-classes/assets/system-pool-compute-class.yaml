@@ -30,7 +30,7 @@ kind: ComputeClass
 metadata:
   name: system-pool
 spec:
-  description: "Dedicated cheap class for non-DaemonSet kube-system pods. Prevents singleton system pods from pinning expensive GPU/TPU/large-shape nodes."
+  # Dedicated cheap class for non-DaemonSet kube-system pods. Prevents singleton system pods from pinning expensive GPU/TPU/large-shape nodes.
   nodePoolAutoCreation:
     enabled: true
   whenUnsatisfiable: ScaleUpAnyway        # never block a kube-system pod

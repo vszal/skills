@@ -3,7 +3,7 @@ kind: ComputeClass
 metadata:
   name: spot-cost-tiebreak-usc1
 spec:
-  description: "Spot-first cost tie-break for stateless, disruption-tolerant workloads in us-central1 — web serving, batch jobs, async processors. Three equal-score Spot families let ComputeClass pick lowest-cost-available rather than baking a family ordering into YAML that would rot as Spot pricing shifts. On-Demand floor guarantees execution. Tune activeMigration and consolidation per workload type — see comments. Requires GKE 1.35.2-gke.1842000+."
+  # Spot-first cost tie-break for stateless, disruption-tolerant workloads in us-central1 — web serving, batch jobs, async processors. Three equal-score Spot families let ComputeClass pick lowest-cost-available rather than baking a family ordering into YAML that would rot as Spot pricing shifts. On-Demand floor guarantees execution. Tune activeMigration and consolidation per workload type — see comments. Requires GKE 1.35.2-gke.1842000+.
   nodePoolAutoCreation:
     enabled: true
   # activeMigration is a serving-tier setting: drifts replicas back from the OD
@@ -15,11 +15,6 @@ spec:
   autoscalingPolicy:
     consolidationDelayMinutes: 2
     consolidationThreshold: 50
-  nodePoolConfig:
-    imageStreaming:
-      enabled: true              # fungible / disposable pods benefit from fast image pulls on scale-up
-    gvnic:
-      enabled: true
   priorityDefaults:
     location:
       zones: ['us-central1-a', 'us-central1-b', 'us-central1-c', 'us-central1-f']
