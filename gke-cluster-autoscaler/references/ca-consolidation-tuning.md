@@ -1,4 +1,4 @@
-# CA: Consolidation Tuning
+# Cluster Autoscaler: Consolidation Tuning
 
 ## `autoscalingPolicy` (ComputeClass)
 Overrides cluster-wide profile defaults for class-managed nodes.
