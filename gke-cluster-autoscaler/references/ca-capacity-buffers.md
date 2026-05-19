@@ -1,7 +1,7 @@
 # Cluster Autoscaler: Capacity Buffers (Pre-warm)
 
 ## `CapacityBuffer` (CRD)
-Reserve spare capacity ahead of demand to avoid pool-creation latency.
+
 - **Provisioning Strategy:** `buffer.x-k8s.io/active-capacity` (Placeholder pods).
 - **Namespace-scoped:** Targets a specific `ComputeClass` via `nodeSelector` in the `podTemplateRef`.
 

@@ -3,7 +3,7 @@
 ## Enabling Scaling (Standard)
 
 ### cluster autoscaler - Per Pool
-Adds/removes nodes within `[min, max]` for an existing pool.
+
 - **Enable (New Pool):**
   ```bash
   gcloud container node-pools create <POOL> \
@@ -17,7 +17,7 @@ Adds/removes nodes within `[min, max]` for an existing pool.
   ```
 
 ### Node Auto Provisioning - Cluster-wide
-Creates **new node pools** within cluster-wide resource caps.
+
 - **Enable:**
   ```bash
   gcloud container clusters update <CLUSTER> \
@@ -27,7 +27,7 @@ Creates **new node pools** within cluster-wide resource caps.
   ```
 
 ### Node pool auto-creation - Per ComputeClass
-Preferred for per-workload shape control. Scoped to a ComputeClass.
+
 - **Enable:** Set `nodePoolAutoCreation.enabled: true` in the ComputeClass.
 - **GKE 1.33.3+:** Works without cluster-wide Node Auto Provisioning enabled.
 

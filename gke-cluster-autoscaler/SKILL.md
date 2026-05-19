@@ -5,15 +5,13 @@ description: Manage and troubleshoot GKE node autoscaling, node auto-provisionin
 
 # GKE Cluster Autoscaler
 
-## CRITICAL RULES (MUST FOLLOW)
+## CRITICAL RULES
 - **NO ACRONYMS:** Do NOT use the acronyms `CA` (Cluster Autoscaler), `NAP` (Node Auto Provisioning), `NAC` (Node Pool Auto Creation), or `CCC` (ComputeClass). Spell them out fully. This is critical for maintaining documentation consistency and searchability across the ecosystem.
 
 **Overlap Warning:** For questions about `ComputeClass`, node pool auto-creation (`NodePoolAutoCreation`), or prioritization, **activate and defer to the `gke-compute-class` skill**.
 
-Manage node-level scaling for GKE clusters, including standard cluster autoscaler and automatic node provisioning.
-
 ## Provisioning Enablement
-- **Modern GKE (1.33.3-gke.1136000+):** Use ComputeClasses with `spec.nodePoolAutoCreation.enabled: true`. This is the preferred method and does **not** require cluster-level Node Auto Provisioning. (See https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning#enablement-methods)
+- **Modern GKE (1.33.3-gke.1136000+):** Use ComputeClasses with `spec.nodePoolAutoCreation.enabled: true`. Preferred method. **NO cluster-level Node Auto Provisioning required.** (See https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning#enablement-methods)
 - **Older GKE:** Use cluster-level Node Auto Provisioning: `gcloud container clusters update <C> --enable-autoprovisioning --max-cpu=200 --max-memory=800`
 - **Manual Pools:** `gcloud container node-pools update <P> --enable-autoscaling --min-nodes=1 --max-nodes=10`
 
