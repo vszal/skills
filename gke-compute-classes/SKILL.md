@@ -8,15 +8,18 @@ Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses.
 ## Engagement Rules: Generalized First, Refine Later
 ComputeClasses depend on zone availability, CUDs, and workload constraints.
 **Do not block the user's initial request.** If asked for YAML/recommendations:
-1. **Provide Generalized Answer Immediately:** Fulfill request using best practices and placeholders (`<YOUR-ZONE-HERE>`). **MUST label initial YAML as `EXAMPLE TEMPLATE - DO NOT DEPLOY`.**
+1. **Provide Generalized Answer Immediately:** Fulfill request using best practices and placeholders (`<YOUR-ZONE-HERE>`).
+    *   **CRITICAL CUD RULE:** You MUST state that the provided machine families (e.g., N4, C4) are generic best-practice examples. You MUST explicitly state that the final choice of machine family should be aligned with the user's existing Committed Use Discounts (CUDs) or Reservations.
+    *   **YAML REQUIREMENT:** Any generated YAML template MUST include a comment near the `machineFamily` field: `# IMPORTANT: Align machineFamily with your existing CUDs/Reservations`.
+    *   **MUST label initial YAML as `EXAMPLE TEMPLATE - DO NOT DEPLOY`.**
     *   **CRITICAL AI/ML RULE:** DO NOT recommend Spot instances as the primary priority for AI/ML Inference, *even if the workload is stateless*. Accelerator node startup latency is severe. The correct priority is: `Reservations -> On-Demand -> DWS FlexStart -> Spot`.
     *   **CRITICAL PROVISIONING RULE:** Do NOT confuse node pool auto-creation with cluster-level Node Auto Provisioning. Starting with GKE `1.33.3-gke.1136000`, `nodePoolAutoCreation.enabled: true` in the ComputeClass achieves automatic node pools scoped directly to the ComputeClass. **It does NOT require turning on Node Auto Provisioning at the cluster level.**
     *   **CRITICAL TAINT RULE:** Do NOT add arbitrary or redundant taints inside the ComputeClass `nodePoolConfig.taints`. When using node pool auto-creation, ComputeClasses automatically taint nodes with `cloud.google.com/compute-class` and auto-tolerate workloads using this key. (Manual node pools still require the taint to be manually created). Adding an extra taint on top of this is redundant and breaks scheduling.
     *   **CRITICAL STATEFUL RULE:** For PV workloads, do NOT mix Gen 2 (PD) and Gen 4 (Hyperdisk) in `priorities[]`. Mix causes attach failures.
-2. **Append Follow-Up Questions:** State that more context enables specific, cost-effective, reliable recommendations. Pin down missing context:
+2. **Append Follow-Up Questions:** State that more context enables specific, cost-effective, reliable recommendations. Pin down missing context (Priority: CUDs first):
+   - **Financial Constraints:** Do you have existing **Committed Use Discounts (CUDs)** or **Reservations** for specific machine families (e.g., N2, N4, C3)? This is the primary driver for machine family selection.
    *   **Workload Profile:** (Stateful vs stateless, use of `activeMigration`.)
    - **Cluster State:** Existing pools, auto-creation status.
-   - **Financial Constraints:** CUDs for machine series.
    - **Infrastructure Constraints:** Target GCP region/zone.
    - **Pod Requests:** Ensure templates have CPU/Memory requests. Node pool auto-creation node sizing is based strictly on Pod *Requests*, not *Limits*.
 **Progressive Disclosure:** Do not guess syntax. Read reference files.

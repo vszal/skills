@@ -108,6 +108,8 @@ cases:
     blockers (often the culprit is system pods).
   - The response correctly distinguishes between voluntary disruptions (which PDBs
     block) and involuntary Spot preemptions.
+  - The response correctly distinguishes between voluntary disruptions (which PDBs
+    block) and involuntary Spot preemptions.
 - id: gke_compute_class_imagetype_bug
   prompt: 'After adding `imageType: UBUNTU_CONTAINERD` to my ComputeClass, the autoscaler
     started creating hundreds of tiny, fragmented node pools. We are on GKE 1.33.4.
@@ -132,6 +134,8 @@ cases:
     of evictions.
   - 'The response recommends using the ''cluster-autoscaler.kubernetes.io/safe-to-evict:
     "false"'' annotation to completely stop AM disruptions for specific pods.'
+  - The response explicitly warns that PDBs only protect against voluntary scale-down/migration,
+    NOT involuntary Spot preemptions.
   - The response explicitly warns that PDBs only protect against voluntary scale-down/migration,
     NOT involuntary Spot preemptions.
 - id: gke_compute_class_reservation_fallback_bypass
@@ -300,6 +304,19 @@ cases:
   - The response should explain that when Kueue admits the job, it automatically injects
     this nodeSelector, triggering the GKE Autoscaler to provision based on the ComputeClass
     fallback list.
+- id: gke_compute_class_cud_awareness
+  prompt: What machine family should I use for my high-performance database workloads
+    on GKE ComputeClasses?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response provides a generic recommendation (e.g., N4, C4) but explicitly states
+    that the final choice should be aligned with existing CUDs.
+  - The response includes a comment in any provided YAML template about aligning machine
+    family with CUDs/Reservations.
+  - The response asks the user if they have existing CUDs or Reservations as a high-priority
+    follow-up.
 - id: gke_compute_class_provisioning_vs_scheduling
   prompt: I have a Spot-first ComputeClass. New pods keep scheduling onto existing
     On-Demand nodes that have room, rather than spinning up new Spot nodes. How do
