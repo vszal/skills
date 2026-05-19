@@ -24,4 +24,3 @@ repo to install.
 | [**GKE ComputeClasses**](./gke-compute-classes) | Priority-based node provisioning and fallback management. | *Experimental* |
 | [**GKE Cluster Autoscaler**](./gke-cluster-autoscaler) | Optimization, consolidation tuning, and debugging pending pods. | *Experimental* |
 | [**GKE Storage**](./gke-storage) | Guidance on block, shared, and volume management for GKE. | *Experimental* |
-| [**GKE Upgrades**](./gke-upgrades) | Strategy, rollout sequencing, and troubleshooting for Control Plane and node upgrades. | *Experimental* |
