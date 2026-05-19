@@ -3,14 +3,9 @@ kind: ComputeClass
 metadata:
   name: tpu-v5e-training
 spec:
-  description: "TPU v5e training class. Reservation → On-Demand → Spot. Spot sits *below* On-Demand because mid-step preemption forces a checkpoint restart, which is more disruptive for training than a slightly longer wait. Topology pinned to 2x4 (8 chips). Single-zone — TPU reservations are zonal."
+  # TPU v5e training class. Reservation → On-Demand → Spot. Spot sits *below* On-Demand because mid-step preemption forces a checkpoint restart, which is more disruptive for training than a slightly longer wait. Topology pinned to 2x4 (8 chips). Single-zone — TPU reservations are zonal.
   nodePoolAutoCreation:
     enabled: true
-  nodePoolConfig:
-    imageStreaming:
-      enabled: true
-    gvnic:
-      enabled: true
   # NOTE: no priorityDefaults.location — would conflict with the Specific
   # reservation on priority 1. Reservation zone scope lives in
   # reservations.specific[].zones; non-reservation priorities set

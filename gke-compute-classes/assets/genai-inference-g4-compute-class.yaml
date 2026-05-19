@@ -3,14 +3,9 @@ kind: ComputeClass
 metadata:
   name: genai-inference-g4
 spec:
-  description: "G4 (NVIDIA RTX PRO 6000 Blackwell) inference serving. Reservation-first with instant Spot fallback, DWS only if Spot exhausted, On-Demand floor. Optimized for serving latency, not training throughput."
+  # G4 (NVIDIA RTX PRO 6000 Blackwell) inference serving. Reservation-first with instant Spot fallback, DWS only if Spot exhausted, On-Demand floor. Optimized for serving latency, not training throughput.
   nodePoolAutoCreation:
     enabled: true
-  nodePoolConfig:
-    imageStreaming:
-      enabled: true
-    gvnic:
-      enabled: true
   # NOTE: no priorityDefaults.location — it would conflict with the Specific
   # reservation on priority 1. location is set per-priority on the non-
   # reservation entries below; the reservation priority's zone scope comes

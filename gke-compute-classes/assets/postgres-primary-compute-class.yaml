@@ -3,14 +3,9 @@ kind: ComputeClass
 metadata:
   name: postgres-primary
 spec:
-  description: "Primary Postgres node, zone-pinned for PV affinity. Reservation-first, On-Demand fallback, all-Gen-4 (Hyperdisk), no Spot."
+  # Primary Postgres node, zone-pinned for PV affinity. Reservation-first, On-Demand fallback, all-Gen-4 (Hyperdisk), no Spot.
   nodePoolAutoCreation:
     enabled: true
-  nodePoolConfig:
-    imageStreaming:
-      enabled: true
-    gvnic:
-      enabled: true
   # NOTE: priorityDefaults.location omitted — it would conflict with the
   # Specific reservation on priority 1. Reservation zone scope lives in
   # reservations.specific[].zones; non-reservation priorities set
@@ -21,7 +16,6 @@ spec:
         sysctls:
           net.core.somaxconn: 1024
           vm.overcommit_memory: 2   # strict — prevents OOM-killer surprises on large queries
-        transparentHugepageEnabled: TRANSPARENT_HUGEPAGE_ENABLED_NEVER
   priorities:
   # 1. Specific reservation — pre-paid, highest obtainability
   - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations

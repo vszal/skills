@@ -3,14 +3,9 @@ kind: ComputeClass
 metadata:
   name: shared-l4-inference
 spec:
-  description: "Shared L4 GPU class for multi-tenant low-utilization inference (dev/staging, batch eval, small-model APIs). MPS sharing with up to 4 clients/GPU."
+  # Shared L4 GPU class for multi-tenant low-utilization inference (dev/staging, batch eval, small-model APIs). MPS sharing with up to 4 clients/GPU.
   nodePoolAutoCreation:
     enabled: true
-  nodePoolConfig:
-    imageStreaming:
-      enabled: true
-    gvnic:
-      enabled: true
   priorityDefaults:
     location:
       zones: ['us-central1-a', 'us-central1-b', 'us-central1-c']

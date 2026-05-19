@@ -329,3 +329,14 @@ cases:
   - Recommends 'activeMigration' to reconcile pods to higher-priority nodes.
   - Mentions Kubernetes PriorityClass for pod-level scheduling/preemption.
   - Mentions Kueue for batch/AI/ML workload queueing and fair-sharing.
+- id: gke_compute_class_schema_adherence
+  prompt: Provide a ComputeClass YAML for a stateless web application with 200GB boot disks and cos_containerd image. Include a sysctl for somaxconn.
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response uses 'bootDiskSize' (not 'bootDiskSizeGb').
+  - The response uses lowercase 'cos_containerd'.
+  - The response does NOT include hallucinated fields like 'gvnic', 'description', or 'transparentHugepageEnabled'.
+  - The response does NOT quote integer values (e.g., 'bootDiskSize: 200', 'net.core.somaxconn: 4096').
+  - The response includes the mandatory CUD alignment comment and warning.

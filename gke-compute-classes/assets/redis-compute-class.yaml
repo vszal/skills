@@ -3,14 +3,9 @@ kind: ComputeClass
 metadata:
   name: redis-memory-optimized
 spec:
-  description: "Memory-tuned class for Redis. AMD c4d preferred, all-Gen-4 (Hyperdisk), On-Demand only, THP off."
+  # Memory-tuned class for Redis. AMD c4d preferred, all-Gen-4 (Hyperdisk), On-Demand only, THP off.
   nodePoolAutoCreation:
     enabled: true
-  nodePoolConfig:
-    imageStreaming:
-      enabled: true
-    gvnic:
-      enabled: true
   priorityDefaults:
     location:
       zones: ['us-central1-a', 'us-central1-b', 'us-central1-c']
@@ -18,7 +13,6 @@ spec:
       linuxNodeConfig:
         sysctls:
           net.core.somaxconn: 1024
-        transparentHugepageEnabled: TRANSPARENT_HUGEPAGE_ENABLED_NEVER
   priorities:
   # 1. c4d — Gen 4 AMD, strong price/perf, Hyperdisk-only
   - machineFamily: c4d

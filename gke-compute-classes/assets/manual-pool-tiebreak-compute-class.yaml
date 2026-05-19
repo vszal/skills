@@ -3,7 +3,7 @@ kind: ComputeClass
 metadata:
   name: pinned-pools-tiebreak
 spec:
-  description: "Standard-cluster ComputeClass pinned to pre-created manual node pools. Multiple equal pools per priority — autoscaler picks among them by lowest unit cost. node pool auto-creation fallback at the bottom for obtainability when all pinned pools are exhausted."
+  # Standard-cluster ComputeClass pinned to pre-created manual node pools. Multiple equal pools per priority — autoscaler picks among them by lowest unit cost. node pool auto-creation fallback at the bottom for obtainability when all pinned pools are exhausted.
   nodePoolAutoCreation:
     enabled: true
   # Each manual pool below must carry the binding label/taint:
