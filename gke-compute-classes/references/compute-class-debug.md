@@ -42,6 +42,8 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 - **Symptom:** Spot capacity returned, but pods stuck on On-Demand nodes.
 - **Cause:** Pod Disruption Budgets (PDBs) block eviction. Active migration strictly honors PDBs.
 - **Fix:** Ensure PDBs allow at least 1 disruption. `maxUnavailable: 0` blocks migration.
+- **Common GKE blocker — system-managed pods:** Non-DaemonSet pods in system namespaces (`kube-system`, `gke-managed-*`, `gmp-system`) often carry tight PDBs + low replicas, so the source node cannot drain (also blocks ordinary scale-down). Check `kubectl get pdb -A` and the autoscaler `noScaleDown` reason; raise replicas to add PDB headroom or isolate them onto a separate ComputeClass.
+- **Note:** PDBs / `safe-to-evict` only gate *voluntary* disruption; Spot preemption is involuntary and ignores both.
 
 ## Symptom 6: ImageType Fragmentation Bug (Pre-1.33.5)
 - **Symptom:** Autoscaler creates hundreds of tiny, fragmented node pools.
