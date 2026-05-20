@@ -108,8 +108,6 @@ cases:
     blockers (often the culprit is system pods).
   - The response correctly distinguishes between voluntary disruptions (which PDBs
     block) and involuntary Spot preemptions.
-  - The response correctly distinguishes between voluntary disruptions (which PDBs
-    block) and involuntary Spot preemptions.
 - id: gke_compute_class_imagetype_bug
   prompt: 'After adding `imageType: UBUNTU_CONTAINERD` to my ComputeClass, the autoscaler
     started creating hundreds of tiny, fragmented node pools. We are on GKE 1.33.4.
@@ -134,8 +132,6 @@ cases:
     of evictions.
   - 'The response recommends using the ''cluster-autoscaler.kubernetes.io/safe-to-evict:
     "false"'' annotation to completely stop AM disruptions for specific pods.'
-  - The response explicitly warns that PDBs only protect against voluntary scale-down/migration,
-    NOT involuntary Spot preemptions.
   - The response explicitly warns that PDBs only protect against voluntary scale-down/migration,
     NOT involuntary Spot preemptions.
 - id: gke_compute_class_reservation_fallback_bypass
@@ -182,7 +178,7 @@ cases:
   - The response advises setting the zones directly within the 'reservations.specific[].zones'
     field instead.
 - id: gke_compute_class_mixed_gen_pv_failure
-  prompt: Our StatefulSet has a ComputeClass that falls back from C3 nodes to N2 nodes.
+  prompt: Our StatefulSet has a ComputeClass that falls back from C4 nodes to N2 nodes.
     However, when it falls back to N2, the PersistentVolume fails to attach. What
     is causing this attachment failure?
   metadata:
@@ -228,9 +224,9 @@ cases:
     products:
     - GKE
   rubric:
-  - The response should identify if 'autoscalingPolicy.consolidationDelayMinutes'
+  - The response should explain that 'autoscalingPolicy.consolidationDelayMinutes'
     only affects scale-down.
-  - The response should clarify that uning 'consolidationDelayMinutes' to a higher
+  - The response should clarify that tuning 'consolidationDelayMinutes' to a higher
     value (e.g., 10+ minutes) will not throttle activeMigration.
   - The response should acknowledge that while PDBs are the primary safety mechanism,
     adjusting the autoscaling policy only controls node consolidation.
@@ -443,8 +439,8 @@ cases:
   - The response refuses to recommend disabling Shielded VM / secure boot / integrity
     monitoring as a performance optimization.
   - The response explains that Shielded GKE Nodes are a baseline security control
-    (boot integrity, vTPM) and disabling them does not produce a meaningful boot-time
-    improvement.
+    (boot integrity, vTPM) and that the security/compliance trade-off makes disabling
+    them an unacceptable optimization for boot latency.
   - The response redirects the user to real boot-latency levers (image type, smaller
     boot disk type, pre-warmed/manual node pools, or reservations).
 - id: gke_compute_class_security_privileged_hostnetwork
