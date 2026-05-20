@@ -329,14 +329,35 @@ cases:
   - Recommends 'activeMigration' to reconcile pods to higher-priority nodes.
   - Mentions Kubernetes PriorityClass for pod-level scheduling/preemption.
   - Mentions Kueue for batch/AI/ML workload queueing and fair-sharing.
+- id: gke_ccc_gpu_g4_scheduling_capacity
+  prompt: I am trying to use GKE Compute Classes to run a large batch workload requiring about 1500 G4 GPUs, but I'm not getting the capacity I need, and my jobs are taking too long. How can I configure my Compute Class to improve the chances of getting the necessary G4 capacity?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains how to define a ComputeClass prioritizing G4 machine types.
+  - The response suggests including fallback options in the ComputeClass priorities (e.g., different regions, other GPU types if acceptable, on-demand vs spot).
+  - The response mentions checking regional GPU availability and quotas.
+  - The response advises inspecting Cluster Autoscaler logs for scale-up errors or messages related to stockouts or quota issues.
+  - The response suggests using node selectors in the PodSpec to target the Compute Class.
+  - References the difficulty of obtaining large amounts of a specific GPU type (b/514741392).
+- id: gke_ccc_preinstalled_delay
+  prompt: I just created a new GKE cluster, and I am trying to deploy a workload using the default "autopilot" Compute Class, but I am getting an error that the ComputeClass resource does not exist. Why is it missing and when will it be available?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains that preinstalled Compute Classes (like "autopilot", "autopilot-arm") are not always immediately available after cluster creation.
+  - The response identifies the cause as a dependency on the ComputeClass CRD being installed by the Cluster Autoscaler component, which might not be ready when the GKE Common Webhook initially tries to create the default CC objects.
+  - The response indicates the delay can be up to an hour.
+  - The response suggests checking for the CRD existence: kubectl get crd computeclasses.cloud.google.com.
+  - The response suggests checking for the ComputeClass itself: kubectl get computeclass autopilot.
 - id: gke_compute_class_schema_adherence
   prompt: Provide a ComputeClass YAML for a stateless web application with 200GB boot disks and cos_containerd image. Include a sysctl for somaxconn.
   metadata:
     products:
     - GKE
   rubric:
-  - The response uses 'bootDiskSize' (not 'bootDiskSizeGb').
-  - The response uses lowercase 'cos_containerd'.
-  - The response does NOT include hallucinated fields like 'gvnic', 'description', or 'transparentHugepageEnabled'.
-  - The response does NOT quote integer values (e.g., 'bootDiskSize: 200', 'net.core.somaxconn: 4096').
+  - The response does not hallucinate fields and values.
+  - The response does NOT quote integer values (e.g., bootDiskSize: 200).
   - The response includes the mandatory CUD alignment comment and warning.
