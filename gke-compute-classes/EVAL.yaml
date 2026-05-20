@@ -472,8 +472,8 @@ cases:
     products:
     - GKE
   rubric:
-  - The response flags that 'privileged: true' + 'hostNetwork' + 'hostPID' is a high-risk
-    pod configuration and should not be the default recommendation.
+  - The response flags that "privileged true" + hostNetwork + hostPID is a high-risk pod
+    configuration and should not be the default recommendation
   - The response suggests least-privilege alternatives (specific Linux capabilities
     like SYS_ADMIN/PERFMON only where required, a tightly-scoped DaemonSet, or a managed
     GKE observability path).
