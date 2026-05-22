@@ -53,3 +53,15 @@ description: Manage and troubleshoot GKE node autoscaling, node auto-provisionin
 or serving workloads.
  CapacityBuffer for serving workloads.
 or serving workloads.
+
+## Edge Cases & Advanced Troubleshooting
+*   **Stuck/Hanging VMs after Failure:** If node creation fails (due to quota or GCE stockout) and the pool is at its `min-nodes` floor, Cluster Autoscaler will NOT delete the unregistered VMs to avoid violating the minimum size limit. Workaround: Temporarily set `min-nodes` to 0 or delete the instances manually in the Compute Engine console.
+*   **Volume Node Affinity Conflict:** "1 node(s) had volume node affinity conflict" means a volume was provisioned in a different zone than the available node. This occurs when using a StorageClass with `VolumeBindingMode: Immediate`. Fix: Switch to a StorageClass with `volumeBindingMode: WaitForFirstConsumer` (e.g., `standard-rwo`).
+*   **Missing CSI Driver (GKE 1.25+):** With `CSIMigrationGCE` generally available in 1.25+, the default in-tree volume provisioner stops working. If pods fail to schedule due to volume zone errors, ensure the Compute Engine PD CSI Driver is enabled on the cluster.
+*   **ComputeClass Reconciliation Loop:** If Node Auto Provisioning constantly creates and deletes node pools (churn) while using a Custom ComputeClass, check for unsupported enum values (like `confidentialNodeType: CONFIDENTIAL_INSTANCE_TYPE_UNSPECIFIED`). The GKE admission webhook may not reject them, leading to an endless CA reconciliation loop. Fix: Edit the ComputeClass YAML and remove invalid fields.
+
+## Advanced Scaling Logic & Permissions
+*   **Node Auto Provisioning (NAP) Logic:** NAP uses a `final_score` mechanism to evaluate cost. It considers node price, reclaimable resources, and unfitness penalties. If creating a new node pool is more optimal or cheaper than scaling existing ones based on this `final_score`, it will create a new pool. You can steer this by adding labels to node pools and setting pod affinity.
+*   **Permission Errors (compute.instances.create):** If scaling fails with missing `compute.instances.create` permissions, the issue is typically with the default compute engine service account (`[project_number]@cloudservices.gserviceaccount.com`). Grant it the necessary permissions (like the Editor role).
+*   **Regional Imbalance:** Perfect numerical parity across zones is not guaranteed and imbalance is an expected state. It can be caused by pod affinities, stockouts, unmatched scale-down events, or unused reservations. During scale-up, GKE uses Location Policies (BALANCED by default, or ANY), but balancing does not apply during scale-down.
+*   **DWS Quota Exceeded:** When using Batch Dynamic Workload Scheduler (DWS), if a Provisioning Request fails with `ACTIVE_RESIZE_REQUESTS` exceeded, this is because active Resize Requests are limited by GCE on a per-project-per-region basis (default limit is 100). Request a quota increase for "Active resize requests" via the All Quotas page.
