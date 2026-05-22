@@ -13,13 +13,17 @@
 
 usage() {
   cat >&2 <<EOF
-Usage: $0 [--errors-only] [--log-file PATH] <cluster-name>
+Usage: $0 [options] [cluster-name]
 
   Tails container.googleapis.com/cluster-autoscaler-visibility logs for the
-  named GKE cluster in the current gcloud project. Cluster name matches
-  resource.labels.cluster_name. Terminal output is always color-printed.
+  named GKE cluster. If cluster-name is omitted, it is inferred from the
+  current kubectl context.
 
 Options:
+  --cluster NAME, -c NAME  The GKE cluster name.
+  --project PROJECT_ID, -p PROJECT_ID
+                           The GCP project ID. If omitted, uses the current 
+                           gcloud project or infers from the kube context.
   --errors-only, -e        Only emit failures and stalls (scale-up errors,
                            noScaleUp, noScaleDown). Suppresses successful
                            scale events.
@@ -32,10 +36,17 @@ EOF
 ERRORS_ONLY=0
 CLUSTER=""
 LOG_FILE=""
+PROJECT=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)        usage; exit 0 ;;
     -e|--errors-only) ERRORS_ONLY=1; shift ;;
+    -c|--cluster)
+                      [[ -z "${2:-}" ]] && { echo "Error: $1 requires a cluster name." >&2; exit 1; }
+                      CLUSTER="$2"; shift 2 ;;
+    -p|--project)
+                      [[ -z "${2:-}" ]] && { echo "Error: $1 requires a project ID." >&2; exit 1; }
+                      PROJECT="$2"; shift 2 ;;
     -o|--log-file)
                       [[ -z "${2:-}" ]] && { echo "Error: $1 requires a path." >&2; exit 1; }
                       LOG_FILE="$2"; shift 2 ;;
@@ -46,8 +57,34 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$CLUSTER" ]]; then
-  usage
-  exit 1
+  if ! command -v kubectl &>/dev/null; then
+    echo "Error: <cluster-name> not provided and 'kubectl' not found to infer it." >&2
+    usage
+    exit 1
+  fi
+  CONTEXT=$(kubectl config current-context 2>/dev/null)
+  if [[ -z "$CONTEXT" ]]; then
+    echo "Error: <cluster-name> not provided and 'kubectl config current-context' returned nothing." >&2
+    usage
+    exit 1
+  fi
+
+  # Robustly parse GKE context: gke_PROJECT_LOCATION_CLUSTER
+  IFS='_' read -ra PARTS <<< "$CONTEXT"
+  if [[ "${PARTS[0]}" == "gke" && ${#PARTS[@]} -ge 4 ]]; then
+    PROJECT_FROM_CTX="${PARTS[1]}"
+    CLUSTER_FROM_CTX="${PARTS[${#PARTS[@]}-1]}"
+    if [[ -z "$PROJECT" ]]; then
+      PROJECT="$PROJECT_FROM_CTX"
+    fi
+    CLUSTER="$CLUSTER_FROM_CTX"
+    echo "Inferred cluster '$CLUSTER' (project '$PROJECT') from kubectl context '$CONTEXT'." >&2
+  else
+    echo "Error: <cluster-name> not provided and could not be determined from current kube context '$CONTEXT'." >&2
+    echo "Expected format: gke_PROJECT_LOCATION_CLUSTER" >&2
+    usage
+    exit 1
+  fi
 fi
 
 for cmd in gcloud jq; do
@@ -57,10 +94,16 @@ for cmd in gcloud jq; do
   fi
 done
 
+GCLOUD_OPTS=()
+[[ -n "$PROJECT" ]] && GCLOUD_OPTS+=(--project "$PROJECT")
+
 # Verify permissions before starting
 echo "Verifying permissions..."
-if ! gcloud projects get-iam-policy $(gcloud config get-value project) --flatten="bindings[].members" --format="table(bindings.role)" --filter="bindings.members:$(gcloud config get-value account)" | grep -q "roles/logging.viewer\|roles/owner\|roles/editor"; then
-  echo "Warning: You may not have 'roles/logging.viewer' permissions in this project. The tail may fail silently." >&2
+CHECK_PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
+if [[ -n "$CHECK_PROJECT" ]]; then
+  if ! gcloud projects get-iam-policy "$CHECK_PROJECT" --flatten="bindings[].members" --format="table(bindings.role)" --filter="bindings.members:$(gcloud config get-value account)" | grep -q "roles/logging.viewer\|roles/owner\|roles/editor"; then
+    echo "Warning: You may not have 'roles/logging.viewer' permissions in project '$CHECK_PROJECT'. The tail may fail silently." >&2
+  fi
 fi
 
 POLL_INTERVAL_SECS=10
@@ -87,6 +130,7 @@ LAST_TIMESTAMP=$(date -u -d '1 minute ago' +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null \
 echo "========================================================================="
 echo " GKE cluster autoscaler event monitor"
 echo "   cluster: $CLUSTER"
+[[ -n "$PROJECT" ]] && echo "   project: $PROJECT"
 if (( ERRORS_ONLY )); then
   echo "   mode:    errors-only (suppressing successful scale events)"
 else
@@ -132,7 +176,7 @@ while true; do
                  OR jsonPayload.noDecisionStatus.noScaleDown:* )"
   fi
 
-  LOGS_JSON=$(gcloud logging read "$QUERY" --order=asc --format=json 2>/dev/null)
+  LOGS_JSON=$(gcloud "${GCLOUD_OPTS[@]}" logging read "$QUERY" --order=asc --format=json 2>/dev/null)
   if [[ -z "$LOGS_JSON" || "$LOGS_JSON" == "[]" ]]; then
     sleep "$POLL_INTERVAL_SECS"
     continue
