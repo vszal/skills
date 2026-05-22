@@ -5,21 +5,13 @@ metadata:
   name: spark-zonal-class
 spec:
   # Optimized for Apache Spark on GKE: 
-  # - C3D/C3 families for high-performance networking and Titanium-offloaded I/O.
-  # - Local NVMe SSDs to eliminate shuffle bottlenecks (AWS/Generic K8s best practice).
-  # - Kernel and Kubelet tunings for high-throughput, latency-sensitive batch processing.
+  # - Tier 1: C3D/C3 families for high-performance networking and Titanium SSDs.
+  # - Tier 2: N2D fallback to maintain Local SSD support for shuffle performance.
+  # - Tier 3: N4 cost-optimized Spot floor (Hyperdisk-only).
   #
   # PROXIMITY GUIDANCE:
-  # To minimize cross-zonal shuffle costs and latency (AWS Optimization Tip), 
-  # executors should be co-located in the same zone as the driver using Pod Affinity:
-  #
-  # affinity:
-  #   podAffinity:
-  #     requiredDuringSchedulingIgnoredDuringExecution:
-  #     - labelSelector:
-  #         matchLabels:
-  #           spark-role: driver
-  #       topologyKey: topology.kubernetes.io/zone
+  # To minimize cross-zonal shuffle costs and latency, executors should be 
+  # co-located in the same zone as the driver using Pod Affinity.
   #
   nodePoolAutoCreation:
     enabled: true
@@ -42,31 +34,28 @@ spec:
       locationPolicy: ANY
     
     nodeSystemConfig:
-      # Advanced system tunings (Translated from K8s performance best practices):
       linuxNodeConfig:
         sysctls:
-          net.core.somaxconn: 2048   # High concurrency connection handling.
-          net.ipv4.tcp_tw_reuse: 1   # Faster socket recycling during massive shuffles.
-          vm.max_map_count: 262144   # Required for Spark memory management on some workloads.
-          vm.swappiness: 1           # Minimize swapping to keep Spark heap in RAM.
+          net.core.somaxconn: 2048
+          net.ipv4.tcp_tw_reuse: 1
+          vm.max_map_count: 262144
+          vm.swappiness: 1
       
       kubeletConfig:
-        # Static policy Pins executors to specific cores, reducing context switching 
-        # (Requires Spark pods to have equal CPU requests and limits).
         cpuManagerPolicy: static
 
   priorities:
   - machineFamily: c3d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
-    # C3D (AMD) offers the best price-performance for parallel Spark workloads.
+    # C3D (AMD) offers best price-performance and large Titanium Local SSD capacity.
     storage:
       bootDiskSize: 100
       bootDiskType: hyperdisk-balanced 
-      localSSDCount: 2 # Backs 'emptyDir' volumes for high-velocity shuffle storage.
+      localSSDCount: 2 
     spot: false
     priorityScore: 100
 
   - machineFamily: c3 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
-    # C3 (Intel) performance fallback.
+    # C3 (Intel) performance fallback with Titanium Local SSDs.
     storage:
       bootDiskSize: 100
       bootDiskType: hyperdisk-balanced 
@@ -74,12 +63,22 @@ spec:
     spot: false
     priorityScore: 80
 
+  - machineFamily: n2d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+    # N2D (AMD) is a critical fallback that still supports Local SSDs. 
+    # Use this to avoid the "shuffle bottleneck" of moving to Hyperdisk/PD-only families.
+    storage:
+      bootDiskSize: 100
+      bootDiskType: pd-balanced 
+      localSSDCount: 2
+    spot: true # Spot N2D provides excellent price-performance for shuffle-heavy jobs.
+    priorityScore: 60
+
   - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
-    # N4 cost-effective fallback. Note: N4 does NOT support Local SSDs.
+    # N4 cost-optimized Spot floor. NOTE: N4 does NOT support Local SSDs.
     storage:
       bootDiskSize: 100
       bootDiskType: hyperdisk-balanced
     spot: true 
-    priorityScore: 50
+    priorityScore: 40
 
   whenUnsatisfiable: ScaleUpAnyway
