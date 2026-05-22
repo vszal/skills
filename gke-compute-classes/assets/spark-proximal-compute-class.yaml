@@ -5,9 +5,9 @@ metadata:
   name: spark-zonal-class
 spec:
   # Optimized for Apache Spark on GKE: 
-  # - Tier 1: C3D/C3 families for high-performance networking and Titanium SSDs.
-  # - Tier 2: N2D fallback to maintain Local SSD support for shuffle performance.
-  # - Tier 3: N4 cost-optimized Spot floor (Hyperdisk-only).
+  # - Tier 1: C4D (Intel Granite Rapids) - Best price-performance with Titanium Local SSDs.
+  # - Tier 2: C4 fallback - High-performance Intel family with Titanium Local SSDs.
+  # - Tier 3: C3D fallback - High-performance AMD Genoa family with Titanium Local SSDs.
   #
   # PROXIMITY GUIDANCE:
   # To minimize cross-zonal shuffle costs and latency, executors should be 
@@ -45,8 +45,9 @@ spec:
         cpuManagerPolicy: static
 
   priorities:
-  - machineFamily: c3d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
-    # C3D (AMD) offers best price-performance and large Titanium Local SSD capacity.
+  - machineFamily: c4d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+    # C4D provides the absolute best price-performance for Spark per user analysis.
+    # Uses Titanium I/O offload for ultra-low latency shuffles.
     storage:
       bootDiskSize: 100
       bootDiskType: hyperdisk-balanced 
@@ -54,8 +55,8 @@ spec:
     spot: false
     priorityScore: 100
 
-  - machineFamily: c3 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
-    # C3 (Intel) performance fallback with Titanium Local SSDs.
+  - machineFamily: c4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+    # C4 fallback maintaining Titanium Local SSD and 200Gbps+ networking.
     storage:
       bootDiskSize: 100
       bootDiskType: hyperdisk-balanced 
@@ -63,22 +64,13 @@ spec:
     spot: false
     priorityScore: 80
 
-  - machineFamily: n2d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
-    # N2D (AMD) is a critical fallback that still supports Local SSDs. 
-    # Use this to avoid the "shuffle bottleneck" of moving to Hyperdisk/PD-only families.
+  - machineFamily: c3d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+    # C3D (AMD) high-performance fallback with Local SSDs.
     storage:
       bootDiskSize: 100
-      bootDiskType: pd-balanced 
-      localSSDCount: 2
-    spot: true # Spot N2D provides excellent price-performance for shuffle-heavy jobs.
+      bootDiskType: hyperdisk-balanced 
+      localSSDCount: 2 
+    spot: false
     priorityScore: 60
 
-  - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
-    # N4 cost-optimized Spot floor. NOTE: N4 does NOT support Local SSDs.
-    storage:
-      bootDiskSize: 100
-      bootDiskType: hyperdisk-balanced
-    spot: true 
-    priorityScore: 40
-
-  whenUnsatisfiable: ScaleUpAnyway
+  whenUnsatisfiable: DoNotScaleUp # Strictly enforce high-performance tiers for Spark.
