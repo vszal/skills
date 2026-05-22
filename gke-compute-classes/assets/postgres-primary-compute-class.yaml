@@ -17,10 +17,11 @@ spec:
           net.core.somaxconn: 1024
           vm.overcommit_memory: 2   # strict — prevents OOM-killer surprises on large queries
   priorities:
-  # 1. Specific reservation — pre-paid, highest obtainability
-  - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+  # 1. Specific reservation — pre-paid, highest obtainability. C4D (AMD Turin)
+  # offers top-tier price-performance for Postgres.
+  - machineFamily: c4d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
-    minMemoryGb: 128
+    minMemoryGb: 128 # High-memory profile (8GB/vCPU) recommended for primary DB
     spot: false
     reservations:
       affinity: Specific
@@ -31,8 +32,8 @@ spec:
       bootDiskType: hyperdisk-balanced
       bootDiskSize: 100
 
-  # 2. On-Demand n4 highmem in same zone (PV affinity)
-  - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+  # 2. On-Demand N4D (AMD Turin) fallback in same zone (PV affinity)
+  - machineFamily: n4d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
     minMemoryGb: 128
     spot: false
@@ -42,7 +43,7 @@ spec:
       bootDiskType: hyperdisk-balanced
       bootDiskSize: 100
 
-  # 3. c4 fallback (still Gen 4, Hyperdisk-compatible) in same zone
+  # 3. C4 (Intel) fallback in same zone
   - machineFamily: c4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
     minMemoryGb: 128
