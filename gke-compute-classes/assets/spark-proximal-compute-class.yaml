@@ -2,11 +2,24 @@
 apiVersion: cloud.google.com/v1
 kind: ComputeClass
 metadata:
-  name: spark-proximal-class
+  name: spark-zonal-class
 spec:
   # Optimized for Apache Spark: Leveraging AMD-based C3D as the primary priority 
   # for superior price-performance, high core density, and large Local SSD capacity.
-  # C3 (Intel) serves as a high-performance fallback, both supporting compact placement.
+  # 
+  # PROXIMITY GUIDANCE:
+  # To ensure high-performance shuffles, executors should be co-located in the same zone 
+  # as the driver. Instead of hardcoded placement policies, use Kubernetes Pod Affinity 
+  # in your Spark pod templates:
+  #
+  # affinity:
+  #   podAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #     - labelSelector:
+  #         matchLabels:
+  #           spark-role: driver
+  #       topologyKey: topology.kubernetes.io/zone
+  #
   nodePoolAutoCreation:
     enabled: true
 
@@ -23,6 +36,8 @@ spec:
 
   priorityDefaults:
     location:
+      # Multiple zones allow the autoscaler to choose the best zone for the driver.
+      # Pod affinity (see guidance above) will then pin executors to that same zone.
       zones: ['us-central1-a', 'us-central1-b', 'us-central1-c'] 
       locationPolicy: ANY
     # System-level network tuning applied to ALL priorities.
@@ -38,31 +53,24 @@ spec:
     storage:
       bootDiskSize: 100
       bootDiskType: hyperdisk-balanced 
-      localSSDCount: 2 
-    
-    # Compact placement ensures executors are physically proximal within the zone.
-    placement:
-      policyName: <YOUR-COMPACT-PLACEMENT-POLICY-NAME> 
+      localSSDCount: 2 # Titanium Local SSDs for maximum shuffle performance.
     
     spot: false
     priorityScore: 100
 
   - machineFamily: c3 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
-    # C3 (Intel) is a strong performance fallback that also supports Local SSDs and Placement.
+    # C3 (Intel) is a strong performance fallback that also supports Local SSDs.
     storage:
       bootDiskSize: 100
       bootDiskType: hyperdisk-balanced 
       localSSDCount: 2 
-    
-    placement:
-      policyName: <YOUR-COMPACT-PLACEMENT-POLICY-NAME> 
     
     spot: false
     priorityScore: 80
 
   - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     # N4 is a cost-effective fallback. 
-    # NOTE: N4 does NOT support Local SSDs or Compact Placement policies.
+    # NOTE: N4 does NOT support Local SSDs.
     storage:
       bootDiskSize: 100
       bootDiskType: hyperdisk-balanced
