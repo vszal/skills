@@ -1,0 +1,72 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
+apiVersion: cloud.google.com/v1
+kind: ComputeClass
+metadata:
+  name: spark-proximal-class
+spec:
+  # Optimized for Apache Spark: Leveraging AMD-based C3D as the primary priority 
+  # for superior price-performance, high core density, and large Local SSD capacity.
+  # C3 (Intel) serves as a high-performance fallback, both supporting compact placement.
+  nodePoolAutoCreation:
+    enabled: true
+
+  nodePoolConfig:
+    imageType: cos_containerd
+
+  # Disable activeMigration for batch stability (prevent mid-job restarts).
+  activeMigration:
+    optimizeRulePriority: false
+
+  autoscalingPolicy:
+    consolidationDelayMinutes: 5
+    consolidationThreshold: 50
+
+  priorityDefaults:
+    location:
+      zones: ['us-central1-a', 'us-central1-b', 'us-central1-c'] 
+      locationPolicy: ANY
+    # System-level network tuning applied to ALL priorities.
+    nodeSystemConfig:
+      linuxNodeConfig:
+        sysctls:
+          net.core.somaxconn: 2048
+          net.ipv4.tcp_tw_reuse: 1
+
+  priorities:
+  - machineFamily: c3d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+    # C3D (AMD) offers ~10-15% better price-performance for parallel Spark workloads.
+    storage:
+      bootDiskSize: 100
+      bootDiskType: hyperdisk-balanced 
+      localSSDCount: 2 
+    
+    # Compact placement ensures executors are physically proximal within the zone.
+    placement:
+      policyName: <YOUR-COMPACT-PLACEMENT-POLICY-NAME> 
+    
+    spot: false
+    priorityScore: 100
+
+  - machineFamily: c3 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+    # C3 (Intel) is a strong performance fallback that also supports Local SSDs and Placement.
+    storage:
+      bootDiskSize: 100
+      bootDiskType: hyperdisk-balanced 
+      localSSDCount: 2 
+    
+    placement:
+      policyName: <YOUR-COMPACT-PLACEMENT-POLICY-NAME> 
+    
+    spot: false
+    priorityScore: 80
+
+  - machineFamily: n4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+    # N4 is a cost-effective fallback. 
+    # NOTE: N4 does NOT support Local SSDs or Compact Placement policies.
+    storage:
+      bootDiskSize: 100
+      bootDiskType: hyperdisk-balanced
+    spot: true 
+    priorityScore: 50
+
+  whenUnsatisfiable: ScaleUpAnyway
