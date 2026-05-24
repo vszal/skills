@@ -1,2 +1,7 @@
 CLAUDE.md
 .agents/
+.claude/
+.antigravitycli/
+*-workspace/
+*-workspace
+skills-lock.json
