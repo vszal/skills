@@ -1,0 +1,19 @@
+# CMEK-encrypted StorageClass. Encryption applies to NEWLY provisioned disks only
+# and is PERMANENT (it cannot be removed from a disk afterward).
+#
+# Required IAM: grant the Compute Engine Service Agent cryptoKeyEncrypterDecrypter
+# on the key (NOT project-wide Editor):
+#   gcloud kms keys add-iam-policy-binding KEY \
+#     --location LOCATION --keyring RING \
+#     --member "serviceAccount:service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com" \
+#     --role roles/cloudkms.cryptoKeyEncrypterDecrypter
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: pd-ssd-cmek
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: pd-ssd
+  disk-encryption-kms-key: projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true

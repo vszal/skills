@@ -1,0 +1,38 @@
+# Cloud Storage FUSE pod tuned for throughput + many-small-files workloads.
+# Requires Workload Identity: serviceAccountName must map to a principal that has
+# bucket access (e.g. roles/storage.objectViewer). The FUSE sidecar is injected
+# automatically; tune it via the gke-gcsfuse/* annotations ("0" = unlimited), NOT
+# the app container's resources.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fuse-app
+  annotations:
+    gke-gcsfuse/volumes: "true"
+    gke-gcsfuse/cpu-limit: "0"
+    gke-gcsfuse/memory-limit: "0"
+    gke-gcsfuse/ephemeral-storage-limit: "0"
+spec:
+  serviceAccountName: fuse-ksa          # Workload Identity-bound KSA
+  containers:
+  - name: app
+    image: busybox
+    command: ["sleep", "infinity"]
+    volumeMounts:
+    - name: bucket
+      mountPath: /data
+      readOnly: true
+  volumes:
+  - name: bucket
+    csi:
+      driver: gcsfuse.csi.storage.gke.io
+      readOnly: true
+      volumeAttributes:
+        bucketName: my-bucket
+        mountOptions: "implicit-dirs"
+        # Metadata + file cache cut repeated GetObjectMetadata calls on small files.
+        # Back the file cache with Local SSD for best results; -1 = unlimited.
+        fileCacheCapacity: "100Gi"
+        metadataStatCacheCapacity: "-1"
+        metadataTypeCacheCapacity: "-1"
+        metadataCacheTtlSeconds: "-1"

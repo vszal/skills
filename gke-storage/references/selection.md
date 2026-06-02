@@ -11,6 +11,8 @@ Select storage based on access pattern, performance needs, and VM series.
 | **Object** | Cloud Storage FUSE | RWX | ML training datasets, unstructured data. |
 | **Ephemeral** | Local SSD | RWO | Caching, scratch space, temp processing. |
 
+**Local SSD caveat:** Highest IOPS, but **ephemeral and node-local** — data is lost when the pod moves or the node is repaired/recreated/upgraded. Use only for regenerable scratch/cache. Prefer it over `emptyDir` on the boot disk, which throttles the whole node under heavy I/O.
+
 ## VM & Storage Compatibility Matrix
 
 Storage performance is strictly tied to the node's machine series.

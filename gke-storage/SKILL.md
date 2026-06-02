@@ -40,3 +40,4 @@ GKE storage uses CSI drivers to provision Google Cloud resources via Kubernetes 
 2. Inspect events: `kubectl describe pvc <name>`
 3. Analyze [Common Issues](./references/observability-debug-dr.md).
 4. Query [CSI Logs](./assets/debug-storage-logs.sh) via Cloud Logging.
+5. For slow (not failing) I/O, check [disk performance metrics](./assets/disk-perf-metrics.sh) — IOPS/throughput/latency/throttled-ops — per [Performance & Cost](./references/performance-cost.md).

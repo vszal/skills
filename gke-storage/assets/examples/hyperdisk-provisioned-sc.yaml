@@ -1,0 +1,15 @@
+# Purpose-built Hyperdisk StorageClass with guaranteed IOPS + throughput baked in
+# at creation. Tune values to the workload; they must stay within the disk type's
+# range AND the node machine series' limits (e.g. C4/C3/N4 for Balanced/Throughput;
+# C4/C3 for Extreme). See references/selection.md for the VM compatibility matrix.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hyperdisk-provisioned
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: hyperdisk-balanced
+  provisioned-iops-on-create: "5000"          # string value
+  provisioned-throughput-on-create: "250Mi"   # string value (MiB/s)
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
