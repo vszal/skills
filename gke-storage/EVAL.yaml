@@ -252,3 +252,121 @@ cases:
   - The response recommends Backup for GKE for backing up both application state (PV/PVC data) and Kubernetes resource configuration, rather than only volume snapshots.
   - The response explains it supports restoring into another cluster (and across regions) for DR, and can be scheduled.
   - The response distinguishes Backup for GKE from raw CSI VolumeSnapshots (which capture disk data only, not the Kubernetes objects), or mentions cross-namespace restore.
+
+# ---- Purpose-built StorageClasses ----
+
+- id: gs_sc_provisioned_iops_throughput
+  prompt: I want a StorageClass for a high-throughput analytics database on a C4 node pool, with guaranteed IOPS and throughput baked in at creation. Build it.
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Uses a Hyperdisk type (e.g. hyperdisk-balanced or hyperdisk-extreme) with provisioner pd.csi.storage.gke.io.
+  - Sets the provisioned-iops-on-create and provisioned-throughput-on-create parameters (string values) to pin guaranteed performance at creation.
+  - Includes volumeBindingMode WaitForFirstConsumer and allowVolumeExpansion true, and notes the C4 machine series must support the chosen Hyperdisk tier/performance.
+
+- id: gs_sc_cmek_encrypted
+  prompt: Give me a StorageClass that encrypts all its disks with our own Cloud KMS key, and tell me what IAM I need.
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The StorageClass sets the disk-encryption-kms-key parameter to the full KMS key resource path (projects/.../locations/.../keyRings/.../cryptoKeys/...).
+  - States the Compute Engine Service Agent (service-[PROJECT_NUMBER]@compute-system.iam.gserviceaccount.com) must be granted roles/cloudkms.cryptoKeyEncrypterDecrypter on the key.
+  - Notes CMEK applies only to newly provisioned disks and is permanent (cannot be removed from a disk later).
+
+- id: gs_sc_storage_pool
+  prompt: We bought a Hyperdisk Storage Pool. How do I make a StorageClass so new PVCs are thin-provisioned out of that pool?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The StorageClass sets the storage-pools parameter to the pool's resource path and uses a Hyperdisk type supported by pools (Balanced or Throughput).
+  - Notes the volumes and the pool must be in the same zone, so WaitForFirstConsumer (or matching topology) is required to keep disks in the pool's zone.
+  - Notes pools support only Balanced and Throughput tiers (not Extreme/ML) and provide thin provisioning / data reduction.
+
+- id: gs_sc_dont_edit_default
+  prompt: I want to change the default standard-rwo StorageClass to use pd-ssd and WaitForFirstConsumer. Can I just kubectl edit it?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Warns against editing the built-in default StorageClass because the GKE Addon Manager (EnsureExists) reverts manual changes to managed defaults.
+  - Recommends creating a NEW custom StorageClass instead (and, if desired, moving the default annotation to it and off standard-rwo).
+  - Mentions setting volumeBindingMode and allowedTopologies appropriately on the new class.
+
+# ---- Slow-I/O diagnosis (log + metric tooling) ----
+
+- id: gs_slow_io_diagnosis
+  prompt: Our Postgres pod's queries got slow this week. CPU and memory look fine. I suspect the disk. How do I confirm whether storage is the bottleneck and fix it?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Directs the user to Cloud Monitoring disk performance metrics (IOPS, throughput, I/O latency, queue depth, throttled operations) for the disk/backing VM.
+  - Explains how to tell whether the workload is IOPS-bound (small random I/O) or throughput-bound (large sequential I/O), and that PD performance scales with disk size and is capped by the VM machine-series limits and shared egress bandwidth.
+  - Recommends concrete fixes: grow the disk, switch to Hyperdisk with provisioned IOPS/throughput, or move to a larger / Titanium-capable machine series.
+
+- id: gs_iops_throttled_at_cap
+  prompt: In Cloud Monitoring I can see "Throttled operations" on my Hyperdisk is consistently high and peak IOPS is sitting right at the provisioned number. What does that mean and what do I do?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Explains the disk is hitting its provisioned IOPS (or throughput) ceiling — throttled operations means I/O is being capped at the limit.
+  - Recommends raising provisioned IOPS/throughput on the Hyperdisk volume (or, for Persistent Disk, increasing disk size to raise the cap).
+  - Mentions checking queue depth / I/O concurrency and confirming the VM machine series can actually deliver the higher limit.
+
+# ---- Cloud Storage FUSE troubleshooting ----
+
+- id: gs_fuse_sidecar_oom
+  prompt: My GKE pod that mounts a GCS bucket via the FUSE CSI driver keeps getting OOMKilled, and throughput is poor. What's going on?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Identifies the Cloud Storage FUSE sidecar container's CPU/memory limits as the likely cause (insufficient memory -> OOM; insufficient CPU -> throttling/slow).
+  - Recommends raising the sidecar resources via the gke-gcsfuse/ Pod annotations (e.g. gke-gcsfuse/memory-limit, gke-gcsfuse/cpu-limit) or leaving them unset/"0" for unlimited.
+  - Notes the sidecar is injected automatically and is tuned through these annotations, not the application container's resources.
+
+- id: gs_fuse_permission_denied
+  prompt: When my pod tries to mount the GCS bucket with the FUSE CSI driver I get "PermissionDenied" / "Unauthenticated". The bucket exists. Why?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Identifies that the FUSE CSI driver authenticates via Workload Identity, so the Kubernetes service account must be bound to a principal with bucket access (e.g. roles/storage.objectViewer or objectAdmin).
+  - Notes a node pool created before Workload Identity was enabled lacks the GKE Metadata Server and will fail until enabled, and that credential propagation can take a few minutes.
+  - Recommends verifying the bucket IAM binding and the KSA mapping rather than loosening bucket ACLs or embedding service-account keys.
+
+- id: gs_fuse_metadata_cache_perf
+  prompt: We mounted a bucket with millions of small files for training and listing/opening files is painfully slow. The Cloud Storage API shows tons of metadata calls. How do we speed it up?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Recommends enabling the Cloud Storage FUSE metadata/stat cache (and file cache) and increasing capacity/TTL to cut repeated GetObjectMetadata calls.
+  - Suggests backing the file cache with Local SSD and using parallel/streaming downloads for large reads, plus implicit-dirs where directory semantics are needed.
+  - Notes FUSE is not a full POSIX filesystem (eventual consistency, weak concurrent-write semantics), so it suits read-heavy serving/training, not transactional writes.
+
+# ---- Local SSD + snapshot migration ----
+
+- id: gs_local_ssd_scratch
+  prompt: We need a really fast scratch/cache volume for a data-processing job - max IOPS, and we don't care if the data survives. What should we use?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Recommends Local SSD (ephemeral local NVMe) for the highest-IOPS scratch/cache use case.
+  - Warns the data is ephemeral and lost when the pod moves or the node is repaired/recreated/upgraded, so it must not hold anything that needs to persist.
+  - Notes it is node-local RWO (not shared) and contrasts it with emptyDir on the boot disk, which throttles the whole node under heavy I/O.
+
+- id: gs_snapshot_migrate
+  prompt: I need to move a stateful workload's data from a zonal PD in us-central1-a to a new regional PD (and possibly another region) without copying files by hand. How?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - Recommends using a CSI VolumeSnapshot of the source PVC as the migration mechanism.
+  - Describes creating a new PVC from the snapshot (dataSource referencing the VolumeSnapshot) on the target StorageClass (regional-pd), and that cross-region moves go via snapshot restore in the new region.
+  - Mentions quiescing/stopping writes (or an app-consistent backup) before snapshotting, and that a PV's type/zone cannot be changed in place.

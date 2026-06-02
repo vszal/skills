@@ -22,4 +22,5 @@ Management of storage resources via Kubernetes native objects.
 ## Volume Snapshots
 - **VolumeSnapshot:** A point-in-time handle for data.
 - **Cross-Namespace Restore:** Use "Static Provisioning" with cluster-scoped `VolumeSnapshotContent`.
+- **Migration (zone/type/region):** A PV's type and zone cannot change in place. To move data (e.g. zonal PD → regional PD, or across regions), snapshot the source PVC, then create a new PVC with `dataSource` referencing the `VolumeSnapshot` on the target StorageClass. Quiesce writes (or take an app-consistent backup) before snapshotting.
 - [Cross-Namespace Example](../assets/examples/cross-namespace-snapshot.yaml)

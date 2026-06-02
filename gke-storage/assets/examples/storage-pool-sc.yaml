@@ -1,0 +1,14 @@
+# Thin-provision PVCs from a pre-purchased Hyperdisk Storage Pool.
+# Constraints: the pool and its volumes MUST be in the same zone, and pools support
+# only the Balanced and Throughput tiers (not Extreme/ML). Volumes draw capacity/IOPS
+# from the pool and benefit from thin provisioning + data reduction.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hyperdisk-pool
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: hyperdisk-balanced
+  storage-pools: projects/PROJECT/zones/ZONE/storagePools/POOL_NAME
+volumeBindingMode: WaitForFirstConsumer   # keeps the disk in the pool's zone
+allowVolumeExpansion: true

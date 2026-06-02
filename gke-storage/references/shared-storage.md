@@ -17,6 +17,13 @@ Mount GCS buckets as volumes. Best for massive data throughput.
 - **Parallelism:** Enable `parallel-downloads-per-file: 16` for large model weights.
 - **Resources:** Increase sidecar CPU/Memory limits for high-throughput training.
 
+### FUSE Troubleshooting
+- **Auth (`PermissionDenied`/`Unauthenticated`):** FUSE authenticates via **Workload Identity** — bind the Kubernetes SA to a principal with bucket access (e.g. `roles/storage.objectViewer`). A node pool created **before** Workload Identity was enabled lacks the GKE Metadata Server and fails until enabled; credential propagation takes a few minutes. Never loosen bucket ACLs or embed SA keys.
+- **Sidecar OOMKilled / slow:** The auto-injected FUSE sidecar is under-resourced. Raise (or unset → unlimited) via Pod annotations `gke-gcsfuse/memory-limit`, `gke-gcsfuse/cpu-limit`, `gke-gcsfuse/ephemeral-storage-limit` ("0" = unlimited) — tune the sidecar, not the app container.
+- **Many small files / metadata storms:** Enable the **metadata (stat/type) cache and file cache** and raise capacity/TTL to cut repeated `GetObjectMetadata` calls; back the file cache with Local SSD. Use `implicit-dirs` for directory semantics.
+- **Not POSIX:** Eventual consistency and weak concurrent-write semantics — suits read-heavy serving/training, not transactional writes. Tuned example: [fuse-tuned-pod.yaml](../assets/examples/fuse-tuned-pod.yaml).
+
 ## Examples
 - [Filestore Multi-share SC](../assets/examples/filestore-sc.yaml)
 - [GCS FUSE PVC](../assets/examples/gcs-fuse-pvc.yaml)
+- [Tuned FUSE Pod (cache + sidecar resources)](../assets/examples/fuse-tuned-pod.yaml)
