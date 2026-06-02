@@ -18,6 +18,13 @@ Ensure storage compliance and protection in GKE.
      --role "roles/cloudkms.cryptoKeyEncrypterDecrypter"
    ```
 
+- **Permanence:** CMEK encryption on a Persistent Disk is irreversible — you cannot remove the key or decrypt an existing disk. To change encryption, create a new disk and migrate data. Never disable encryption as a performance optimization.
+- **Least Privilege:** Grant only `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the specific key to the Compute Engine Service Agent. Do NOT grant project-wide `Editor`/`Owner` to "unblock" provisioning.
+
+## Pod Identity & Access
+- **Workload Identity (Federation):** The only sanctioned way for pods to access GCS/Cloud APIs. NEVER embed a service-account JSON key in a Secret or ConfigMap.
+- **hostPath:** Node-local, not RWX, and a node-escape / data-exfiltration risk. Never use as shared storage — use Filestore or GCS FUSE.
+
 ## Security Context
 - **fsGroup:** Recursive permission changes on large volumes can take 30+ minutes.
 - **Optimization:** Use `fsGroupChangePolicy: "OnRootMismatch"` to skip redundant recursive walks.

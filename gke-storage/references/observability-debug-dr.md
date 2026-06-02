@@ -14,6 +14,8 @@ Monitoring health, fixing issues, and ensuring business continuity.
 - **FailedMount:** Check firewall rules (Filestore) or sidecar status (GCS FUSE).
 - **Expansion Pending:** Ensure Pod is `Running`; filesystem resize won't happen if Pod is stuck.
 - **ZONE_RESOURCE_POOL_EXHAUSTED:** A GCE capacity stockout. Occurs during dynamic volume creation if the region lacks capacity for large or specific Hyperdisks.
+- **Quota Exceeded (PVC Pending + `ProvisioningFailed`):** The project/region hit a Persistent Disk quota (SSD/standard GB or disk count). Check IAM & Admin > Quotas (or `gcloud`) for the disk type in the PVC's region; request an increase, reduce size, or use a region with available quota.
+- **Cluster-wide Pending (no events):** If new PVCs everywhere stall with no provisioning events while existing volumes work, suspect the CSI driver — check the PD CSI controller/node pods in `kube-system` and their external-provisioner logs (not a per-PVC StorageClass/quota issue).
 
 ## Backup & Disaster Recovery (DR)
 - **Backup for GKE:** Managed service for **Data + Config** (YAMLs, Secrets). Supports app-consistent hooks.
