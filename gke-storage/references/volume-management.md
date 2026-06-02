@@ -11,11 +11,13 @@ Management of storage resources via Kubernetes native objects.
 
 ## Volume Operations
 - **Online Expansion:** Increase PVC size. Requires `allowVolumeExpansion: true`.
-- **The Expansion Trap:** Filesystem resize only happens when the Pod is **Running**. Check for `FileSystemResizePending`.
+- **The Expansion Trap:** Filesystem resize only happens when the Pod is **Running**. Clear `FileSystemResizePending` by restarting/recreating the consuming Pod so the node remounts and resizes the filesystem.
+- **No Shrink:** A PVC can only be grown, never shrunk.
 - **Cloning:** Create a new PVC from an existing one using `dataSource`.
 
 ## Deletion & Finalizers
-- **Stuck in Terminating:** If you delete a PVC/PV before the referencing Pod is cleanly evicted, it will hang indefinitely in the `Terminating` state. This is due to the `kubernetes.io/pv-protection` finalizer locking the resource to prevent data loss.
+- **reclaimPolicy:** With `Delete` (common default), deleting a released PVC destroys the backing disk and its data permanently. Use `Retain` to preserve the disk. Before deleting: remove the consuming Pod and snapshot/back up first.
+- **Stuck in Terminating:** If you delete a PVC/PV before the referencing Pod is cleanly evicted, it will hang indefinitely in the `Terminating` state. This is due to the `pvc-protection`/`pv-protection` finalizers locking the resource to prevent data loss.
 
 ## Volume Snapshots
 - **VolumeSnapshot:** A point-in-time handle for data.
