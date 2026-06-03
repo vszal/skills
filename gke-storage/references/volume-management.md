@@ -4,6 +4,7 @@ Management of storage resources via Kubernetes native objects.
 
 ## Configuration Syntax
 - **StorageClass (SC):** Defines the flavor of storage.
+  - **provisioner (required, exact string):** PD & Hyperdisk → `pd.csi.storage.gke.io`; Filestore → `filestore.csi.storage.gke.io`; GCS FUSE → `gcsfuse.csi.storage.gke.io`. Never abbreviate to a bare `csi.storage.gke.io`. `parameters`, `volumeBindingMode`, `allowVolumeExpansion`, and `reclaimPolicy` are **top-level** SC fields — not nested under `parameters:`.
   - **Do NOT Edit Defaults:** The GKE Addon Manager (`EnsureExists`) will revert manual modifications to default StorageClasses (e.g., `standard-rwo`). Always create a *new* custom StorageClass instead — set your desired `type`, `volumeBindingMode`, and (for regional/multi-zone) `allowedTopologies` on it. To make it the cluster default, move the `storageclass.kubernetes.io/is-default-class: "true"` annotation onto the new class and off `standard-rwo`.
   - **Topology Constraints:** For regional or multi-zone setups, explicitly define `allowedTopologies`. Omitting this forces GKE to provision the underlying disk strictly where compute is currently available, potentially locking pods out of future zonal expansion.
 - **PersistentVolumeClaim (PVC):** Requests a specific size and SC.

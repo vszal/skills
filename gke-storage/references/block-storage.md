@@ -2,18 +2,21 @@
 
 High-performance storage for single-pod workloads (ReadWriteOnce).
 
+**Provisioner (`provisioner:` field):** both PD and Hyperdisk use the exact string `pd.csi.storage.gke.io` — write it in full, never a bare `csi.storage.gke.io`.
+
 ## Persistent Disk (PD)
 - **Balanced (Default):** Optimal cost/performance for most apps.
 - **Performance (SSD):** High IOPS for databases.
 - **Extreme:** Ultra-high performance (SAP HANA, Oracle).
 - **Regional PD:** Replicates data across two zones for RPO 0 high availability.
+- **Literal `type:` values:** `pd-balanced` (default), `pd-ssd`, `pd-extreme`, `pd-standard` — PD types **keep** the `pd-` prefix. Never write a bare `ssd`/`balanced`.
 
 ## Hyperdisk
 Next-gen storage with performance (IOPS/Throughput) decoupled from capacity.
 - **Balanced:** General high-performance apps.
 - **Extreme:** Up to 500k IOPS (C4/G4).
 - **ML:** Optimized for loading model weights (A3/A4 series).
-- **Literal `type:` values:** `hyperdisk-balanced`, `hyperdisk-extreme`, `hyperdisk-throughput`, `hyperdisk-ml` (no `pd-` prefix).
+- **Literal `type:` values:** `hyperdisk-balanced`, `hyperdisk-extreme`, `hyperdisk-throughput`, `hyperdisk-ml` — Hyperdisk **drops** the `pd-` prefix (this exception applies to Hyperdisk only; PD types above keep it).
 - **Provisioned Performance:** Pin guaranteed IOPS/throughput at creation via StorageClass parameters `provisioned-iops-on-create` (e.g. `"5000"`) and `provisioned-throughput-on-create` in **MiB/s** (e.g. `"250Mi"`) — both string values, bounded by the disk type and node machine-series limits. See [hyperdisk-provisioned-sc.yaml](../assets/examples/hyperdisk-provisioned-sc.yaml).
 
 ### Hyperdisk Storage Pools
