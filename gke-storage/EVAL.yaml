@@ -418,3 +418,71 @@ cases:
   - The response recognizes that because the PVC is Bound and the instance is READY, provisioning succeeded and the problem is network reachability to the Filestore instance over NFS at mount time (not a provisioning/StorageClass error).
   - The response recommends verifying VPC firewall rules allow NFS traffic from the node pool to the Filestore instance IP (NFS port 2049, plus the 111/mount ports), and that the cluster and instance are on a reachable network — the authorized VPC network, and PSC or VPC-peering reachability for the chosen connect mode.
   - The response recommends inspecting kubectl describe pod events and the Filestore CSI node driver logs, and testing reachability to the instance IP from a node, to confirm the mount target is reachable.
+
+# ---- Migration to GKE (EKS / on-prem), Hyperdisk-forward ----
+
+- id: gs_migrate_eks_ebs_to_hyperdisk
+  prompt: |
+    We're moving a Postgres StatefulSet from EKS to GKE. The data is on EBS gp3 volumes with provisioned IOPS and throughput. My plan was to snapshot the EBS volumes and restore them as GKE disks. How do I do that restore, and which GKE disk type should I land on?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response makes clear there is no cross-cloud snapshot/restore path between AWS and GCP — the data must be copied over the wire (an app-consistent dump/restore or DB replication, or a file copy staged through Cloud Storage), ideally with writes quiesced, rather than by "restoring an EBS snapshot" into a GCP disk.
+  - The response recommends landing on Hyperdisk (e.g. Hyperdisk Balanced) rather than legacy pd-balanced as the go-forward block type, and notes it is the natural gp3 analog because both decouple provisioned IOPS/throughput from capacity, so the gp3 performance settings map over directly; it uses the pd.csi.storage.gke.io driver with a Hyperdisk type in the StorageClass.
+  - The response covers the StatefulSet mechanics: rewrite the storageClassName/provisioner to the GKE Hyperdisk StorageClass, and either create one static PV per replica matching the volumeClaimTemplate naming or let GKE dynamically provision and load the data in; for cross-zone HA it may mention Hyperdisk Balanced High Availability as the Regional PD successor.
+
+- id: gs_migrate_efs_rwx_accessmode
+  prompt: |
+    Our EKS app used EFS with ReadWriteMany shared across about 10 pods. On GKE I created a Hyperdisk StorageClass and set the PVC accessMode to ReadWriteMany, but the pods won't all attach. What's the right GKE equivalent of EFS?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies the root cause: Hyperdisk (like Persistent Disk) is block storage and cannot back ReadWriteMany read-write access regardless of the accessMode requested in the PVC, so only one node can attach it read-write — that is why the other pods fail to attach.
+  - The response recommends Filestore (the *-rwx storage classes, filestore.csi.storage.gke.io) as the managed NFS/RWX equivalent of EFS, or GCS FUSE for object-style shared access, chosen by latency/POSIX needs.
+  - The response may add the nuance that if the EFS workload is read-mostly fan-out (e.g. serving model weights or static assets), Hyperdisk ML provides ReadOnlyMany to many nodes — but read-write-many still requires Filestore or GCS FUSE.
+
+- id: gs_migrate_static_pv_released_claimref
+  prompt: |
+    I exported a PersistentVolume (reclaimPolicy Retain) and its PVC to a new GKE cluster to reuse the existing disk. I recreated the PVC, but it stays Pending and the PV shows Released — events mention the volume is "already bound to a different claim". The disk and data are fine. How do I get it to bind?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies that the PV still carries a stale spec.claimRef.uid pointing at the old cluster's deleted PVC, so the controller refuses to rebind it to the new PVC even though the names match.
+  - The response gives the fix: clear or patch the claimRef (e.g. kubectl patch pv <name> -p '{"spec":{"claimRef":null}}', or set claimRef.uid to the new PVC's UID) so the PV returns to Available and binds to the recreated PVC.
+  - The response notes reclaimPolicy Retain is why the data survived the export, warns not to leave disks Retain indefinitely (released PVs/disks keep billing — orphaned-disk cleanup), and may note a PV's disk type cannot be changed in place, so moving onto Hyperdisk means a new disk plus a data copy rather than an edit.
+
+- id: gs_migrate_nfs_uid_permission
+  prompt: |
+    We migrated an on-prem NFS share to Filestore and copied all the files over. The application is unchanged and the manifests are the same as on-prem, but now the pods get "permission denied" when writing to the volume. What's wrong?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies that the copied files retain their on-prem numeric UID/GID ownership, which does not match the container's (often non-root) user, and NFS enforces ownership by numeric UID/GID — so the pod's user cannot write even though the same manifest worked on-prem.
+  - The response recommends fixes such as setting securityContext.fsGroup (with fsGroupChangePolicy OnRootMismatch for large trees) so the CSI driver adjusts mount ownership, an init container running as root to chown the data, or preserving/remapping UIDs during the copy.
+  - The response recommends diagnosing by comparing the in-pod user (id) against the file ownership on the share (ls -ln), to confirm the UID/GID mismatch.
+
+- id: gs_migrate_pd_vs_hyperdisk_machine_series
+  prompt: |
+    Migrating our workloads onto a new GKE cluster that uses N4 nodes. I reused our old pd-balanced StorageClass, but new PVCs/pods are stuck — I'm seeing FailedAttachVolume and pods Pending. Should we even be on Persistent Disk anymore, or Hyperdisk?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies the cause: several newer machine series (e.g. N4, C4) support only Hyperdisk and cannot attach Persistent Disk, so a pd-balanced/pd-ssd StorageClass cannot provision/attach on those node pools — which is why the volumes are stuck.
+  - The response recommends Hyperdisk as the go-forward block platform and matches the type to the need (hyperdisk-balanced for general use, hyperdisk-extreme/-throughput for high performance, hyperdisk-ml for read-only fan-out), noting Hyperdisk decouples capacity from provisioned IOPS/throughput and that Storage Pools can reduce cost.
+  - The response gives the fix — switch the workload's StorageClass to a Hyperdisk type (or, if PD is required, use a machine series that still supports Persistent Disk) — and may note per-machine-series IOPS/throughput caps that bound achievable performance.
+
+- id: gs_migrate_onprem_data_transfer
+  prompt: |
+    We have about 8 TB on an on-prem NFS filer that needs to land on GKE Filestore for a StatefulSet. What's the right way to move that much data into Google Cloud and cut over with minimal downtime?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response recognizes there is no cloud snapshot for on-prem data, so the bytes must be transferred over a network path (Cloud VPN or Cloud Interconnect) or via offline shipping, not a snapshot restore.
+  - The response recommends appropriate transfer mechanisms — Storage Transfer Service with on-prem agents (optionally staging through Cloud Storage, then hydrating into Filestore), or Transfer Appliance for very large datasets / constrained bandwidth — and weighs the choice against available link throughput for ~8 TB.
+  - The response describes a low-downtime cutover: an initial bulk copy followed by incremental syncs, then quiesce writes for a final delta sync and repoint the workload, and mentions verifying data consistency/integrity after the move.

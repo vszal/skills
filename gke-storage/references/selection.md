@@ -25,6 +25,8 @@ Storage performance is strictly tied to the node's machine series.
 | **M3, A3** | Extreme, ML | Optional | 350k IOPS / 5 GB/s |
 | **E2, N1** | Not Supported | N1 only | 15k IOPS / 0.4 GB/s |
 
+**Hyperdisk-only series:** The newest series (e.g. **N4, C4, G4**) support **only Hyperdisk — they cannot attach Persistent Disk**. A `pd-balanced`/`pd-ssd` StorageClass will fail to provision/attach there (`FailedAttachVolume`, pods `Pending`); switch the StorageClass to a Hyperdisk type (or use a series that still supports PD).
+
 **Titanium Architecture:** Enables C4, G4, and C3 series to offload storage I/O to dedicated hardware for ultra-low latency.
 
 **Source:** [Machine type comparison](https://docs.cloud.google.com/compute/docs/machine-resource#machine_type_comparison)
