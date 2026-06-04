@@ -5,7 +5,7 @@ Storage for multiple pods requiring simultaneous access (ReadWriteMany).
 ## Filestore (NFS)
 - **Basic (Zonal):** Minimum 1 TiB. Lowest cost.
 - **Enterprise (Regional):** High availability. Supports **Multi-shares**.
-- **Multi-shares:** Consolidate up to 80 small shares (min 10GiB) into one Enterprise instance.
+- **Multi-shares (the fix for many small RWX volumes):** Carve **one** Enterprise instance into up to **80 shares**, each as small as **~10 GiB**, each backing its own PersistentVolume. This is the right answer when you need many RWX volumes that are each well under Filestore's 1 TiB-per-instance minimum — recommend it over paying 1 TiB per volume, and over GCS FUSE when you need true NFS/POSIX semantics. Performance (IOPS/throughput) is **pooled across the shares** (a cost/performance trade-off).
 - **Networking:** Prefer **Private Service Connect (PSC)** over VPC Peering for transitivity and IPAM efficiency.
 
 ## Cloud Storage FUSE (Object)
