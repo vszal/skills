@@ -370,3 +370,51 @@ cases:
   - Recommends using a CSI VolumeSnapshot of the source PVC as the migration mechanism.
   - Describes creating a new PVC from the snapshot (dataSource referencing the VolumeSnapshot) on the target StorageClass (regional-pd), and that cross-region moves go via snapshot restore in the new region.
   - Mentions quiescing/stopping writes (or an app-consistent backup) before snapshotting, and that a PV's type/zone cannot be changed in place.
+
+# ---- EKS-extrapolated gaps (mapped from common Amazon EKS storage failures) ----
+
+- id: gs_volume_node_affinity_conflict
+  prompt: |
+    My StatefulSet pod is stuck Pending. kubectl describe pod shows:
+    "0/5 nodes are available: 2 node(s) had volume node affinity conflict".
+    The PVC is already Bound. Nothing is wrong with the image. What's going on and how do I fix it?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies that the bound PV is a zonal Persistent Disk pinned to a single zone (the PV's nodeAffinity), and the scheduler cannot place the pod because there is no schedulable node in that disk's zone.
+  - The response distinguishes this as a scheduling failure (not a FailedAttachVolume / attach error), so the fix is to get a node into the disk's zone — scale the node pool / cluster autoscaler in that zone, or reschedule where the disk lives.
+  - The response recommends preventing recurrence with volumeBindingMode WaitForFirstConsumer (so the disk is provisioned in a zone where a pod can actually schedule) and/or Regional PD or multi-zone allowedTopologies for zone-fault tolerance.
+
+- id: gs_hyperdisk_modify_iops_cooldown
+  prompt: |
+    I created a Hyperdisk Balanced volume with 3000 provisioned IOPS and now the workload needs about 10000. I edited the IOPS on the PVC but nothing changed, and I bumped the performance once already a couple hours ago. How do I actually increase the provisioned IOPS on an existing Hyperdisk?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains that the CSI driver only changes a volume's capacity (size) in place — provisioned IOPS/throughput on an existing Hyperdisk are changed through the Compute Engine API / disk update (or a VolumeAttributesClass where supported), not by editing IOPS on the PVC.
+  - The response notes Hyperdisk provisioned performance can be modified at most once every ~4 hours (a cooldown), so a change made a couple hours ago must wait, and a new level can take up to ~15 minutes to take effect.
+  - The response notes the target IOPS must be within the limits of the disk type and the node machine series, and may mention that performance can be pinned at creation via provisioned-iops-on-create / provisioned-throughput-on-create.
+
+- id: gs_orphaned_pd_cost_cleanup
+  prompt: |
+    We deleted several StatefulSets months ago, but our Persistent Disk bill never dropped. We still see a pile of PVCs and PVs that aren't attached to anything. Why are we still paying for them, and how do I clean this up safely?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains that deleting a StatefulSet does NOT delete the PVCs created from its volumeClaimTemplates (intentional, to protect data), so the PVCs/PVs and their backing Persistent Disks persist and keep billing at full provisioned size even though nothing mounts them.
+  - The response gives a safe cleanup procedure: confirm no workload/pod still references each PVC, snapshot or back up anything worth keeping, then delete the PVCs — with reclaimPolicy Delete the underlying PD is removed (stopping the cost), while with Retain the released PV and its disk must be deleted manually.
+  - The response recommends setting the StatefulSet persistentVolumeClaimRetentionPolicy (whenDeleted / whenScaled) to auto-clean PVCs on future deletes/scale-downs, and warns that reclaimPolicy Retain leaves orphaned disks that must be reclaimed by hand.
+
+- id: gs_filestore_mount_hang
+  prompt: |
+    My pods that mount a Filestore (NFS) PVC are stuck in ContainerCreating and the mount never completes. The PVC is Bound and the Filestore instance shows READY in the console. How do I troubleshoot this?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response recognizes that because the PVC is Bound and the instance is READY, provisioning succeeded and the problem is network reachability to the Filestore instance over NFS at mount time (not a provisioning/StorageClass error).
+  - The response recommends verifying VPC firewall rules allow NFS traffic from the node pool to the Filestore instance IP (NFS port 2049, plus the 111/mount ports), and that the cluster and instance are on a reachable network — the authorized VPC network, and PSC or VPC-peering reachability for the chosen connect mode.
+  - The response recommends inspecting kubectl describe pod events and the Filestore CSI node driver logs, and testing reachability to the instance IP from a node, to confirm the mount target is reachable.

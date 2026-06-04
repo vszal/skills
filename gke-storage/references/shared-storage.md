@@ -7,6 +7,7 @@ Storage for multiple pods requiring simultaneous access (ReadWriteMany).
 - **Enterprise (Regional):** High availability. Supports **Multi-shares**.
 - **Multi-shares (the fix for many small RWX volumes):** Carve **one** Enterprise instance into up to **80 shares**, each as small as **~10 GiB**, each backing its own PersistentVolume. This is the right answer when you need many RWX volumes that are each well under Filestore's 1 TiB-per-instance minimum — recommend it over paying 1 TiB per volume, and over GCS FUSE when you need true NFS/POSIX semantics. Performance (IOPS/throughput) is **pooled across the shares** (a cost/performance trade-off).
 - **Networking:** Prefer **Private Service Connect (PSC)** over VPC Peering for transitivity and IPAM efficiency.
+- **Mount hangs (`ContainerCreating`) with PVC Bound + instance READY:** Provisioning already succeeded — this is a **mount-time NFS network-reachability** problem, **not** a FUSE issue (no sidecar / Workload Identity involved here). Check the VPC **firewall allows NFS** from the node pool to the instance IP (**TCP 2049**, plus the **111/mountd** ports), and that the cluster and instance share a **reachable network** (the authorized VPC network; PSC or VPC-peering reachability for the chosen connect mode). Test from a node with `mount -t nfs <INSTANCE_IP>:/<share> /mnt`, and inspect `kubectl describe pod` events plus the **Filestore CSI node** driver logs.
 
 ## Cloud Storage FUSE (Object)
 Mount GCS buckets as volumes. Best for massive data throughput.
