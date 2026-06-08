@@ -497,3 +497,26 @@ cases:
     a credential-handling anti-pattern (they end up in etcd, GitOps repos, and logs).
   - The response, if it mentions 'nodePoolConfig.serviceAccount', clarifies that the
     field accepts the email of a least-privileged IAM service account, not key material.
+- id: gke_compute_class_large_shape_obtainability
+  prompt: I have a ComputeClass with priorities pinned only to large machine types
+    (c4-standard-48 and c4-standard-96, both >32 vCPU). My pods keep getting stuck
+    Pending with out-of-resources errors. The workload is a horizontally-scalable
+    stateless web API where each pod requests 4 vCPU. How should I fix the ComputeClass?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies that machine shapes larger than 32 vCPU draw from thinner
+    capacity pools and hit stockouts ('out.of.resources') far more often than smaller
+    shapes, so pinning to large machines only risks Pending.
+  - The response recommends adding smaller-core machine shapes as lower-priority fallbacks
+    (e.g., adding c4-standard-16 or an intent-based minCores below 32) since the workload
+    allows it.
+  - The response correctly reasons that because each pod only requests 4 vCPU and the
+    workload is horizontally scalable, smaller nodes can satisfy the pods (node auto-creation
+    sizes nodes to Pod requests), so shrinking the node shape is safe here.
+  - The response notes that smaller-shape fallback would NOT help a single pod that
+    genuinely requests more than 32 vCPU — that case requires varying zone/family instead
+    of cores.
+  - The response still applies the standard ComputeClass rules (CUD comment, EXAMPLE
+    TEMPLATE label, unquoted integers, no schema hallucinations).
