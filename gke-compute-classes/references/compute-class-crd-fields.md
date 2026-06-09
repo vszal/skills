@@ -37,6 +37,7 @@ Applied to pools created by the autoscaler.
 - `minCores`, `minMemoryGb`: Lower bounds for intent-based matching.
 - `spot`: `true` for Spot, `false` for On-Demand.
 - `location.zones`: List of zones to attempt.
+- `location.locationPolicy`: `ANY` (default; packs for utilization, tends to fill one zone) or `BALANCED` (spreads scale-up evenly across `zones` — use for HA without `priorityScore`).
 - `reservations`: `affinity: Specific` or `None`.
 - `flexStart`: `{ enabled: true }` for DWS queued provisioning.
 - `gpu` / `tpu`: Accelerator requests (count, type, topology).

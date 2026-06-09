@@ -47,8 +47,15 @@ Enable `activeMigration` to allow GKE to continuously move workloads to more cos
 - **Throttling Vol. Disruptions:** Active migration honors Pod Disruption Budgets (PDBs). Use PDBs to throttle eviction rates. To stop active migration for specific pods, add the `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` annotation.
 - **WARNING:** PDBs and `safe-to-evict` only block *voluntary* scaler actions. They **cannot** block *involuntary* Spot VM preemptions.
 
-## Balanced HA Scale-Up (Round-Robin)
-If you need to achieve a roughly balanced, highly-available scale-up across multiple zones:
-- Define separate priority rules (or use separate zonal node pools) for each zone.
-- Assign an **equal `priorityScore`** to all of those zonal priority rules.
-- GKE will evaluate them together and achieve a roughly balanced scale-up via round-robin selection.
+## Balanced HA Scale-Up Across Zones
+Two ways to spread scale-up roughly evenly across zones for HA. **Trap:** one priority *per zone* does NOT balance — priorities are sequential, so zone-a drains fully before zone-b is tried.
+
+**Method A — `locationPolicy: BALANCED` (default; no `priorityScore`, works pre-1.35.2):**
+- Use **ONE** priority per machine size listing **all** zones in `location.zones`.
+- Set `location.locationPolicy: BALANCED` (spreads evenly; `ANY` packs for utilization).
+- **Zonal reservations:** name every zonal reservation under `reservations.affinity: Specific`, each scoped to its zone; BALANCED then spreads consumption across them.
+- Asset: `balanced-reserved-zonal-compute-class.yaml`.
+
+**Method B — equal `priorityScore` round-robin (GKE 1.35.2-gke.1842000+):**
+- Define separate per-zone priority rules and assign them an **equal `priorityScore`** (max 3 rules/score).
+- GKE evaluates them together and round-robins for rough balance.
