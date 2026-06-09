@@ -165,6 +165,29 @@ cases:
     rules.
   - The response explains that equal scores allow GKE to achieve roughly balanced
     scale up via round-robin selection.
+- id: gke_compute_class_balanced_reserved_no_priorityscore
+  prompt: We want balanced scale-up across three zonal reservations (one per zone in
+    us-central1-a, b, c) for our t2d web frontend, for high availability. We are NOT
+    on a GKE version with priorityScore yet, so we can't use it. How do we configure
+    the ComputeClass priorities to get roughly equal zonal distribution?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response uses a SINGLE priority per machine size that lists all three zones
+    in 'location.zones', NOT one separate priority per zone.
+  - 'The response sets ''location.locationPolicy: BALANCED'' and explains BALANCED
+    spreads evenly while ANY tends to pack a single zone.'
+  - The response warns that defining one priority per zone does NOT balance, because
+    priorities are evaluated sequentially and zone-a's reservation drains before zone-b
+    is tried.
+  - 'The response names all three zonal reservations under ''reservations.affinity:
+    Specific'', each scoped to its zone.'
+  - The response does NOT use 'priorityScore' (respecting that the cluster's GKE version
+    predates it).
+  - The response still applies the standard ComputeClass rules (CUD alignment comment
+    on machineType/machineFamily, EXAMPLE TEMPLATE label, unquoted integers, no schema
+    hallucinations).
 - id: gke_compute_class_location_reservation_conflict
   prompt: 'I''m getting an error on my ComputeClass status: ''location config with
     specific reservations enabled''. I have a global location block and a specific

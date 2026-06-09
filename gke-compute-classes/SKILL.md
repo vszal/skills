@@ -33,6 +33,7 @@ ComputeClasses depend on zone availability, CUDs, and workload constraints.
 
 ## Commonly Missed (cite directly, don't wait to open a reference)
 - **Large-shape obtainability:** Machine shapes **>32 vCPU** are scarcer than smaller ones (thinner capacity pools, more `out.of.resources` stockouts). A ComputeClass pinned to large machines **only** risks `Pending`. Add **smaller-core fallback priorities** — but only **if the workload allows it**: node auto-creation sizes nodes to Pod *requests*, so a single pod requesting >32 vCPU can't shrink onto a smaller node (vary zone/family instead). Smaller-shape fallback helps **horizontally-scalable** workloads (many small pods).
+- **Balanced zonal scale-up:** To spread evenly across zones (HA), use **ONE** priority per machine size listing **all** zones with `location.locationPolicy: BALANCED` (not `ANY`, which packs one zone). One priority *per zone* does NOT balance — sequential evaluation drains zone-a first. Name each zonal reservation under `affinity: Specific`. This needs **no `priorityScore`** (which requires GKE 1.35.2+); equal-score round-robin is the alternative only on newer GKE. Asset: `balanced-reserved-zonal-compute-class.yaml`.
 - **Reservation fallback bypass:** `reservations.affinity: AnyBestEffort` (or `Automatic`) falls back to On-Demand at the GCE layer, silently skipping lower ComputeClass priorities — so a Spot fallback never fires. Use `Specific` affinity with named reservations so ComputeClass fallback works. (Not a `whenUnsatisfiable` problem.)
 
 ## Index
