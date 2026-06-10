@@ -8,7 +8,7 @@ If fields are ignored or fail with "not supported," the control plane is likely 
 ## Symptom 1: ComputeClass Config Error
 Check `status.conditions` on the ComputeClass object via `kubectl describe ComputeClass <NAME>`.
 - **Common Error:** `location config with specific reservations enabled`.
-- **Fix:** Omit `location` from the reservation priority. Use `reservations.specific[].zones` instead.
+- **Fix:** Remove `location.zones` from the reservation priority — zones come from `reservations.specific[].zones` instead. Only `location.zones` collides; a policy-only `location.locationPolicy` (e.g. `BALANCED`) may remain.
 
 ## Symptom 2: Scale-Up Failure (Pods Pending)
 Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/cluster-autoscaler-visibility)).
