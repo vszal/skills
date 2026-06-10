@@ -1,0 +1,52 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
+apiVersion: cloud.google.com/v1
+kind: ComputeClass
+metadata:
+  name: t2d-balanced-reserved
+spec:
+  # Balanced multi-zone scale-up across separate ZONAL reservations, WITHOUT priorityScore
+  # (priorityScore needs GKE 1.35.2-gke.1842000+; this pattern works on older versions).
+  # Balance comes from THREE design choices:
+  #   1. ONE priority per machine size listing ALL zones (NOT one priority per zone).
+  #      Per-zone priorities are sequential and drain zone-a's reservation before
+  #      ever trying zone-b.
+  #   2. locationPolicy: BALANCED spreads scale-up evenly across the listed zones
+  #      (ANY optimizes for utilization and tends to pack a single zone).
+  #   3. Reservations are zonal, so all zonal reservations are named under
+  #      affinity: Specific; BALANCED then spreads consumption across them.
+  nodePoolAutoCreation:
+    enabled: true
+  priorities:
+  # --- Priority 1: preferred shape, balanced across 3 zones ---
+  - machineType: t2d-standard-32   # IMPORTANT: Align machineFamily/type with your existing CUDs/Reservations
+    spot: false
+    location:
+      zones: ['us-central1-a', 'us-central1-b', 'us-central1-c']
+      locationPolicy: BALANCED      # even spread; this gives balance without priorityScore
+    reservations:
+      affinity: Specific            # NEVER AnyBestEffort — it falls back to On-Demand at the GCE layer and skips lower priorities
+      specific:
+      - name: <RESERVATION-ZONE-A>
+        zones: ['us-central1-a']
+      - name: <RESERVATION-ZONE-B>
+        zones: ['us-central1-b']
+      - name: <RESERVATION-ZONE-C>
+        zones: ['us-central1-c']
+
+  # --- Priority 2: fallback shape, also balanced across the same 3 zones ---
+  - machineType: t2d-standard-16   # IMPORTANT: Align machineFamily/type with your existing CUDs/Reservations
+    spot: false
+    location:
+      zones: ['us-central1-a', 'us-central1-b', 'us-central1-c']
+      locationPolicy: BALANCED
+    reservations:
+      affinity: Specific
+      specific:
+      - name: <RESERVATION-16-ZONE-A>
+        zones: ['us-central1-a']
+      - name: <RESERVATION-16-ZONE-B>
+        zones: ['us-central1-b']
+      - name: <RESERVATION-16-ZONE-C>
+        zones: ['us-central1-c']
+
+  whenUnsatisfiable: DoNotScaleUp
