@@ -13,7 +13,7 @@
 
 ## Location Policies (`--location-policy`)
 
-- **`BALANCED`**: Keeps node counts even across zones. Use for **HA workloads** / `topologySpreadConstraints`.
+- **`BALANCED`**: Best-effort even **node** spread across zones *at scale-up* (infrastructure layer; still scales up if a zone is short). Does **not** balance **pods** — that's a separate workload layer needing pod `topologySpreadConstraints` (`DoNotSchedule`, see PTS below). The two are independent. Use for **HA workloads**.
 - **`ANY`**: Grabs capacity from any zone. **Best for Spot VMs** and scarce SKUs (maximizes obtainability).
 
 ## ComputeClass `locationPolicy`

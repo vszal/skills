@@ -2,7 +2,7 @@
 
 ## Common Traps
 - **`AnyBestEffort` Reservation:** Bypasses ComputeClass priorities and falls back to On-Demand at the GCE level. Avoid; use `Specific` affinity.
-- **Reservations are Zonal:** Pin zones via `reservations.specific[].zones` on the priority. Don't use `priorityDefaults.location` (collides with `Specific`).
+- **Reservations are Zonal:** Pin zones via `reservations.specific[].zones`. `location.zones` (per-priority or `priorityDefaults.location`) collides with `Specific` — omit it; a policy-only `location.locationPolicy: BALANCED` is fine.
 - **Disk Generation:**
     - **Gen 4** (`n4`, `c4`): Requires **Hyperdisk**.
     - **Gen 2** (`n2`, `c2`): Requires **Persistent Disk**.

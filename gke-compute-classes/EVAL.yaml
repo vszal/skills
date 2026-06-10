@@ -174,15 +174,23 @@ cases:
     products:
     - GKE
   rubric:
-  - The response uses a SINGLE priority per machine size that lists all three zones
-    in 'location.zones', NOT one separate priority per zone.
-  - 'The response sets ''location.locationPolicy: BALANCED'' and explains BALANCED
-    spreads evenly while ANY tends to pack a single zone.'
+  - 'The response lists all three zonal reservations as SEPARATE ''reservations.specific[]''
+    entries (each with its own name + zones), within a SINGLE priority per machine size —
+    NOT one priority per zone, and NOT collapsed into a single unnamed reservation entry.'
+  - 'The response does NOT place ''location.zones'' on the Specific-reservation priority
+    (that combination errors: ''location config with specific reservations enabled''); zones
+    come from ''reservations.specific[].zones'', and at most a policy-only ''location.locationPolicy''
+    remains.'
+  - 'The response sets ''location.locationPolicy: BALANCED'' and explains it gives
+    INFRASTRUCTURE/node-level even spread across zones (best-effort; still scales up if
+    a zone is short; ANY packs one zone) — without claiming BALANCED alone balances pods.'
+  - 'The response distinguishes the two layers: BALANCED balances NODES (infrastructure),
+    while even POD distribution (workload) requires pod ''topologySpreadConstraints'' (maxSkew
+    1, topologyKey ''topology.kubernetes.io/zone'', ''whenUnsatisfiable: DoNotSchedule'') set
+    on the WORKLOAD/Pod, not the ComputeClass.'
   - The response warns that defining one priority per zone does NOT balance, because
     priorities are evaluated sequentially and zone-a's reservation drains before zone-b
     is tried.
-  - 'The response names all three zonal reservations under ''reservations.affinity:
-    Specific'', each scoped to its zone.'
   - The response does NOT use 'priorityScore' (respecting that the cluster's GKE version
     predates it).
   - The response still applies the standard ComputeClass rules (CUD alignment comment

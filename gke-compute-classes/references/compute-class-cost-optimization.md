@@ -48,12 +48,15 @@ Enable `activeMigration` to allow GKE to continuously move workloads to more cos
 - **WARNING:** PDBs and `safe-to-evict` only block *voluntary* scaler actions. They **cannot** block *involuntary* Spot VM preemptions.
 
 ## Balanced HA Scale-Up Across Zones
-Two ways to spread scale-up roughly evenly across zones for HA. **Trap:** one priority *per zone* does NOT balance — priorities are sequential, so zone-a drains fully before zone-b is tried.
+"Balanced" spans **two independent layers** — clarify which the user wants:
+- **Infrastructure (nodes):** `locationPolicy: BALANCED` spreads node scale-up roughly evenly across zones (best-effort; **still scales up** if a zone is short; `ANY` packs one zone).
+- **Workload (pods):** BALANCED does **not** balance pods. Add pod `topologySpreadConstraints` (`maxSkew:1`, `topologyKey: topology.kubernetes.io/zone`, `whenUnsatisfiable: DoNotSchedule` — default `ScheduleAnyway` won't enforce it) on the **workload** (see `gke-cluster-autoscaler`).
 
-**Method A — `locationPolicy: BALANCED` (default; no `priorityScore`, works pre-1.35.2):**
-- Use **ONE** priority per machine size listing **all** zones in `location.zones`.
-- Set `location.locationPolicy: BALANCED` (spreads evenly; `ANY` packs for utilization).
-- **Zonal reservations:** name every zonal reservation under `reservations.affinity: Specific`, each scoped to its zone; BALANCED then spreads consumption across them.
+**Trap:** one priority *per zone* does NOT balance — priorities are sequential, so zone-a drains fully before zone-b is tried.
+
+**Method A — `locationPolicy: BALANCED` (no `priorityScore`, works pre-1.35.2):**
+- Use **ONE** `priorities[]` entry per machine size (not one priority *per zone*). Inside it, set `reservations.affinity: Specific`; the `reservations.specific[]` list holds **one entry per zone** (3 zones → 3 named `specific[]` entries with their own `name` + `zones`). Don't make a separate priority per reservation, and don't collapse all zones into a single entry.
+- Set `location.locationPolicy: BALANCED`. **Schema:** do **not** put `location.zones` on a `Specific`-reservation priority (error: *location config with specific reservations enabled*) — zones come from the reservations; the `location` block keeps `locationPolicy` only.
 - Asset: `balanced-reserved-zonal-compute-class.yaml`.
 
 **Method B — equal `priorityScore` round-robin (GKE 1.35.2-gke.1842000+):**
