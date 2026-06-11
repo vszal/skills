@@ -45,7 +45,7 @@ Applied to pools created by the autoscaler.
 - `nodeSystemConfig`: 
   - `linuxNodeConfig`: `sysctls` (e.g., `net.ipv4.tcp_tw_reuse: true`, `net.core.somaxconn: 4096`). **Never quote integer or boolean values.**
   - `kubeletConfig`: `cpuCfsQuota`, `podPidsLimit`, etc.
-- `storage`: Set `bootDiskType`, `bootDiskSize`, and `localSSDCount` specifically for this priority. Overrides cluster/nodePoolConfig defaults.
+- `storage`: Set `bootDiskType`, `bootDiskSize`, and `localSSDCount` specifically for this priority. Overrides cluster/nodePoolConfig defaults. **This is the NODE boot disk, NOT the workload's data PV** — for attached PVs use a Kubernetes `StorageClass` (recommend the built-in `dynamic-rwo` with `use-allowed-disk-topology: "true"` on GKE 1.35.3-gke.1290000+; see [provisioning methods](./compute-class-provisioning-methods.md)).
 
 ## Important Schema Constraints
 - **Case Sensitivity**: `imageType` must be lowercase (e.g., `cos_containerd`).

@@ -23,6 +23,13 @@ Next-gen storage with performance (IOPS/Throughput) decoupled from capacity.
 - **Migrating block storage INTO GKE (from EBS / another cloud):** Snapshots are **not cross-cloud** — there is **no** EBS→PD/Hyperdisk snapshot restore. Copy data over the wire (app-consistent dump/restore or DB replication, or stage through Cloud Storage) with writes quiesced. Land on **Hyperdisk Balanced**, not legacy `pd-balanced` — go-forward default and the natural **gp3 analog** (both decouple provisioned IOPS/throughput from capacity, so gp3 perf settings map ~1:1); same `pd.csi.storage.gke.io` driver, `type: hyperdisk-balanced`. Cross-zone HA → **Hyperdisk Balanced High Availability** (Regional PD successor).
 - **Block storage cannot serve `ReadWriteMany`:** PD **and** Hyperdisk are block → only one node attaches read-write **regardless of the `accessMode` requested** (a PVC asking RWX on a Hyperdisk SC still won't let extra pods attach). RWX → **Filestore** or **GCS FUSE**; read-only fan-out to many nodes → **Hyperdisk ML** (`ReadOnlyMany`).
 
+### Dynamic disk type selection (`dynamic-rwo`)
+**GKE 1.35.3-gke.1290000+.** A `type: dynamic` StorageClass provisions **either Persistent Disk or Hyperdisk depending on the node it lands on** — one StorageClass that works across both PD-capable and Hyperdisk-only series. GKE ships it built-in as **`dynamic-rwo`** (reference by name on supported clusters; no need to create it).
+- **Params:** `type: dynamic`, plus `pd-type` (default `pd-balanced`) and `hyperdisk-type` (default `hyperdisk-balanced`) to pick the tier each backend resolves to. `dynamic` only covers the **balanced** tiers — for `hyperdisk-extreme`/`-ml`/`-throughput` use a dedicated Hyperdisk StorageClass.
+- **`use-allowed-disk-topology: "true"` (the key parameter):** makes the **Cluster Autoscaler disk-topology-aware** — it reads the workload's disk requirements and scales up **only disk-compatible nodes**, instead of provisioning an incompatible node that strands the pod in `FailedAttachVolume`/`Pending`. This is what makes it safe to use across a cluster whose nodes (or **ComputeClass** priorities — xref gke-compute-classes) span machine series.
+- **Version gate:** both `type: dynamic` and `use-allowed-disk-topology` require **1.35.3-gke.1290000+**; they cannot be back-ported. Keep `volumeBindingMode: WaitForFirstConsumer`. See [dynamic-rwo-sc.yaml](../assets/examples/dynamic-rwo-sc.yaml).
+- **Existing volumes don't convert:** switching a workload to `dynamic-rwo` only affects **newly provisioned** PVs. An existing PVC already bound to a fixed PD or Hyperdisk keeps that disk type — migrate the data (snapshot/restore or app/DB-level copy); PD↔Hyperdisk is **not** an in-place conversion.
+
 ### Hyperdisk Storage Pools
 Aggregate performance across multiple volumes for large clusters.
 - **Efficiency:** Supports **thin provisioning** and data reduction.
@@ -35,3 +42,4 @@ Set `disk-encryption-kms-key` to the full KMS key path. Encryption applies to **
 ## Examples
 - [Regional PD StorageClass](../assets/examples/regional-pd-sc.yaml)
 - [Hyperdisk StorageClass](../assets/examples/hyperdisk-sc.yaml)
+- [Dynamic (`dynamic-rwo`) StorageClass](../assets/examples/dynamic-rwo-sc.yaml)

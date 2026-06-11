@@ -1,0 +1,25 @@
+# Dynamic disk-type selection: ONE StorageClass that provisions Persistent Disk (PD) on
+# older/Gen-2 nodes OR Hyperdisk on Hyperdisk-only series (N4, C4, G4...), picked per node.
+# `dynamic-rwo` is a BUILT-IN StorageClass on GKE 1.35.3-gke.1290000+ — on supported
+# clusters reference it by name; this manifest only documents its contents (the `type: dynamic`
+# feature also requires 1.35.3-gke.1290000+, so it cannot be back-ported to older clusters).
+#
+# WHY use-allowed-disk-topology MATTERS on mixed-series / autoscaled clusters:
+# It makes the Cluster Autoscaler disk-topology-aware — it reads the workload's disk
+# requirements and scales up ONLY disk-compatible nodes, so the autoscaler won't provision
+# (e.g.) a PD-only node for a Hyperdisk volume and leave the pod in FailedAttachVolume /
+# Pending. Pairs naturally with GKE ComputeClasses whose priorities span machine series
+# (xref gke-compute-classes). NOTE: `dynamic` resolves to the BALANCED tiers below; for a
+# specific Hyperdisk tier (extreme/ml/throughput) use a dedicated Hyperdisk StorageClass.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: dynamic-rwo
+provisioner: pd.csi.storage.gke.io
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  type: dynamic
+  pd-type: pd-balanced
+  hyperdisk-type: hyperdisk-balanced
+  use-allowed-disk-topology: "true"   # string value

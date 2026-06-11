@@ -475,6 +475,20 @@ cases:
   - The response identifies the cause: several newer machine series (e.g. N4, C4) support only Hyperdisk and cannot attach Persistent Disk, so a pd-balanced/pd-ssd StorageClass cannot provision/attach on those node pools — which is why the volumes are stuck.
   - The response recommends Hyperdisk as the go-forward block platform and matches the type to the need (hyperdisk-balanced for general use, hyperdisk-extreme/-throughput for high performance, hyperdisk-ml for read-only fan-out), noting Hyperdisk decouples capacity from provisioned IOPS/throughput and that Storage Pools can reduce cost.
   - The response gives the fix — switch the workload's StorageClass to a Hyperdisk type (or, if PD is required, use a machine series that still supports Persistent Disk) — and may note per-machine-series IOPS/throughput caps that bound achievable performance.
+  - "Acceptable alternative for mixed-series clusters: the response may note that on GKE 1.35.3-gke.1290000+ the built-in dynamic-rwo StorageClass (type: dynamic + use-allowed-disk-topology: \"true\") provisions PD or Hyperdisk per node and makes the Cluster Autoscaler scale up only disk-compatible nodes."
+
+- id: gs_dynamic_rwo_mixed_series_autoscaling
+  prompt: |
+    My GKE cluster autoscales across several machine series (some N2, some N4/C4) and I also use ComputeClasses with multi-family fallback. My StatefulSet PVCs sometimes end up FailedAttachVolume / Pending depending on which node the autoscaler picks. Is there a single StorageClass that just works across all of them?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies the root cause: newer series (N4, C4, G4) are Hyperdisk-only and cannot attach Persistent Disk, so a fixed pd-* (or fixed hyperdisk-*) StorageClass breaks when the autoscaler provisions an incompatible node.
+  - "The response recommends the built-in dynamic-rwo StorageClass (or a type: dynamic StorageClass) with parameters type: dynamic, pd-type, hyperdisk-type, and use-allowed-disk-topology: \"true\"."
+  - The response explains that use-allowed-disk-topology makes the Cluster Autoscaler disk-topology-aware so it scales up only disk-compatible nodes (instead of stranding the pod), and that type dynamic provisions PD or Hyperdisk per node.
+  - The response states the GKE 1.35.3-gke.1290000+ version requirement and keeps volumeBindingMode WaitForFirstConsumer.
+  - The response may note that dynamic resolves to the balanced tiers, so a workload needing a specific Hyperdisk tier (extreme/ml/throughput) should use a dedicated Hyperdisk StorageClass instead.
 
 - id: gs_migrate_onprem_data_transfer
   prompt: |
