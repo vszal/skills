@@ -19,7 +19,9 @@ ComputeClass node pool auto-creation dynamically manages nodes and **does not na
 Put manual pools at the top for zero-latency scheduling; use node pool auto-creation fallbacks below for infinite scale.
 
 ## Stateful Workloads & Storage
-For Zonal PVs, you should use `volumeBindingMode: WaitForFirstConsumer` in `StorageClass` to avoid cross-zone deadlocks between disks and autoscaled nodes.
+For Zonal PVs, use `volumeBindingMode: WaitForFirstConsumer` in the `StorageClass` to avoid cross-zone deadlocks between disks and autoscaled nodes.
+
+**Recommended (GKE 1.35.3-gke.1290000+): the built-in `dynamic-rwo` StorageClass** (`type: dynamic`, `pd-type: pd-balanced`, `hyperdisk-type: hyperdisk-balanced`, `use-allowed-disk-topology: "true"`). `use-allowed-disk-topology` makes the **Cluster Autoscaler disk-topology-aware** — it reads the workload's disk requirements and scales up **only disk-compatible node options** ("machine serenity"), skipping incompatible-generation priorities instead of provisioning a node that then fails PV attach. This is what lets a stateful ComputeClass keep a broad `priorities[]` fallback list across machine families/generations safely (see [Gen Isolation exception](./compute-class-prioritization.md)). Built-in on supported clusters (reference by name; no need to create); asset `dynamic-rwo-storageclass.yaml` documents its contents. NOTE: this is the **data-PV StorageClass**, distinct from `priorities[].storage.bootDiskType` (the node boot disk).
 
 ## Intent-based vs. Strict Configuration
 - **Intent-based (Preferred):** `machineFamily: n4`, `minCores: 16`. Allows GKE to find best-fit shape or substitute families.

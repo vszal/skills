@@ -7,6 +7,8 @@
     - **Gen 4** (`n4`, `c4`): Requires **Hyperdisk**.
     - **Gen 2** (`n2`, `c2`): Requires **Persistent Disk**.
     - *Rule:* For stateful PV workloads, do NOT mix Gen 2 and Gen 4 priorities (fallback attach fails -> `ContainerCreating` trap).
+    - *Exception (GKE 1.35.3-gke.1290000+):* back data PVs with the built-in `dynamic-rwo` StorageClass (`type: dynamic` + `use-allowed-disk-topology: "true"`). The autoscaler reads disk requirements and scales up only compatible nodes, so mixing generations in `priorities[]` becomes safe. See [Asset: dynamic-rwo-storageclass.yaml](../assets/dynamic-rwo-storageclass.yaml).
+    - *Caveat:* `dynamic-rwo` only governs **newly provisioned** PVs. An **existing** PV already created as a fixed PD or Hyperdisk does **not** retroactively become flexible — migrate its data onto a `dynamic-rwo`-backed volume (snapshot/restore or app/DB-level copy; PD↔Hyperdisk is not an in-place conversion).
     - *Reference:* [Asset: postgres-primary-compute-class.yaml](../assets/postgres-primary-compute-class.yaml)
 
 ## Provisioning Nuance

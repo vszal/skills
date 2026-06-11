@@ -59,11 +59,11 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 
 ## Symptom 9: Disk/PV Attachment Fail
 - **Cause:** Mixing Gen 4 VMs (Hyperdisk) and Gen 2 (PD) in the same priority list.
-- **Fix:** Do not mix generations for workloads with attached PVs.
+- **Fix:** Do not mix generations for workloads with attached PVs. **Or (GKE 1.35.3-gke.1290000+):** back the data PVs with the built-in `dynamic-rwo` StorageClass (`type: dynamic` + `use-allowed-disk-topology: "true"`) — the autoscaler becomes disk-topology-aware and scales up only compatible nodes, so a mixed-generation `priorities[]` no longer attach-fails.
 
 ## Symptom 10: Zonal PV Deadlock (Pending Pods)
 - **Symptom:** StatefulSet pod is Pending because disk is in zone B but node is in zone A.
-- **Fix:** Do **not** hardcode `location` in priorities. Configure `StorageClass` with `volumeBindingMode: WaitForFirstConsumer` so disk provisions in the chosen node's zone.
+- **Fix:** Do **not** hardcode `location` in priorities. Use a `StorageClass` with `volumeBindingMode: WaitForFirstConsumer` so the disk provisions in the chosen node's zone — the built-in `dynamic-rwo` (GKE 1.35.3-gke.1290000+) already sets this plus `use-allowed-disk-topology: "true"`.
 
 ## Symptom 11: List Loops / Backoff
 - **Cause:** >10 priorities. Unobtainable shapes enter a 5-minute cooldown. Long lists expire upper-tier cooldowns before reaching the bottom, causing an infinite loop.
