@@ -578,3 +578,23 @@ cases:
   - The response cautions that the user must also consider node upgrade strategies,
     recommending Blue/Green Upgrades over Surge Upgrades to honor the longer termination
     period.
+- id: ca_new_reservation_cache_lag
+  prompt: We created a specific compute reservation in us-central1-a a few minutes
+    ago and pointed our ComputeClass at it, but the cluster autoscaler still won't
+    scale up onto it and the pods are stuck Pending. The reservation shows plenty
+    of unused capacity in the console. What's going on and how do we fix it?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains that the cluster autoscaler caches reservation data and
+    does not see a freshly-created reservation immediately, so the reservation may
+    not yet be visible to CA.
+  - The response explains that targeting the reservation before CA's cache catches
+    up causes CA to back off that reservation, which delays retries and compounds
+    the stall.
+  - The response recommends waiting at least ~30 minutes after creating the reservation
+    before driving autoscaler scale-up against it.
+  - The response does NOT misdiagnose this as a stockout/out-of-resources, quota,
+    or selector/affinity misconfiguration as the primary cause (the reservation has
+    free capacity; the issue is cache lag).
