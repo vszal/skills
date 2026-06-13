@@ -12,20 +12,27 @@ Run **Autopilot-mode** workloads (Google-managed nodes, pod-based billing, Autop
 - **Namespace default:** `kubectl label ns $NS cloud.google.com/default-compute-class=autopilot` — all Pods in the namespace run Autopilot mode unless they select another class.
 - **Existing Pods:** Pods already running on Standard nodes switch to Autopilot mode **only when recreated** (rollout/restart), not in place.
 
-## Billing — pod-based vs node-based
-- **Built-in `autopilot`/`autopilot-spot` = pod-based:** you pay for Pod **requests** only (no system overhead, no empty nodes). Pod size **50m–28 vCPU**; can still burst.
-- **Node-based** applies to anything outside that envelope (see below): you pay for the node.
+## Billing — driven by the priority-rule type, NOT pod size
+Billing is **not** tied to a vCPU threshold. It's the kind of priority rule GKE uses:
+- **Built-in `autopilot`/`autopilot-spot` = always pod-based:** pay for Pod **requests** only (no system overhead, no empty nodes). Built-in pod size **50m–28 vCPU**; can still burst.
+- **Custom class with `spec.autopilot.enabled` — billing follows the rule:**
+  - **`podFamily` rule → pod-based** (GKE 1.35.2-gke.1485000+). Same pay-per-request model as the built-in class, but in a class you author.
+  - **Hardware rule (`machineFamily`, `machineType`, `gpus`) → node-based.** You pay for the node because you pinned the shape/accelerator.
+- A custom Autopilot class is therefore **not automatically node-based** — it's node-based only when its selected priority requests specific hardware.
 
 ## Custom ComputeClass in Autopilot mode (`spec.autopilot`)
-Add the **`spec.autopilot.enabled: true`** field to any custom ComputeClass; Pods that select it then run in Autopilot mode on Google-managed nodes.
+Add the **`spec.autopilot.enabled: true`** field to any custom ComputeClass; Pods that select it then run in Autopilot mode on Google-managed nodes. The **priority-rule type** sets the billing model (see above):
 ```yaml
 spec:
   autopilot:
     enabled: true
-  # ... your priorities[] etc.
+  priorities:
+  - podFamily: general-purpose   # pod-based billing (GKE 1.35.2-gke.1485000+)
+  - machineFamily: n4            # node-based billing (pinned hardware)
+    minCores: 64
 ```
-- **Use it for:** Pods **>28 vCPU**, or needing **GPU/TPU** / specific hardware — these don't fit the built-in `autopilot` class and bill **node-based**.
-- Combine with normal `priorities[]` to keep Autopilot management while controlling machine selection.
+- **Reach for a custom class when** you need a specific `machineFamily`/`machineType`, **GPU/TPU**, or a Pod the built-in `autopilot` class won't take (e.g. **>28 vCPU**) — billing then follows the rule type (hardware rule → node-based). For the same managed, pay-per-request model in your own class, use a **`podFamily`** rule instead.
+- Combine rules in one `priorities[]` to keep Autopilot management while controlling machine selection.
 
 ## Caveats (cite when relevant)
 - **Privileged restriction:** Autopilot enforces user-space / privileged-admission controls — `privileged`, `hostNetwork`, `hostPID/IPC`, `hostPath`, and arbitrary host access are **rejected**. A workload needing those **cannot** use Autopilot mode; keep it on a standard (node-based) ComputeClass. (See CRITICAL POD-PRIVILEGE RULE in SKILL.md.)

@@ -611,10 +611,30 @@ cases:
   - The response explains that the built-in 'autopilot' class is limited to pods up
     to 28 vCPU, so the 64 vCPU pod must instead use a CUSTOM ComputeClass with the
     'spec.autopilot.enabled' field set to true.
-  - The response notes that the over-28-vCPU (custom-class) path is billed node-based,
-    not pod-based.
+  - The response notes that because the 64 vCPU pod uses a hardware priority rule
+    (e.g. 'machineFamily' / 'machineType'), this custom-class path is billed node-based
+    (billing follows the priority-rule type, not the pod's vCPU size).
   - The response explains that Autopilot mode rejects privileged / hostNetwork pods
     (user-space admission controls), so the privileged hostNetwork DaemonSet CANNOT
     run in Autopilot mode and must stay on a standard node-based ComputeClass.
   - The response does NOT suggest disabling Autopilot's security admission or otherwise
     weakening it to force the privileged pod through.
+- id: gke_autopilot_custom_class_billing
+  prompt: I added the autopilot field to one of my own custom ComputeClasses on a
+    Standard cluster. Does enabling Autopilot on a user-created compute class always
+    mean I get charged the per-pod Autopilot pricing, or can it be node-based? What
+    controls which one I get?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains that enabling Autopilot on a custom ComputeClass does NOT
+    by itself force pod-based pricing — the billing model depends on the priority-rule
+    type used, not on the autopilot field alone.
+  - The response explains that a 'podFamily' priority rule yields pod-based (per-pod-request)
+    billing.
+  - The response explains that a hardware priority rule ('machineFamily', 'machineType',
+    or 'gpus') yields node-based billing.
+  - The response makes clear that billing is determined by the rule type, not by pod
+    vCPU size, and does NOT claim that custom Autopilot classes are always node-based
+    OR always pod-based.
