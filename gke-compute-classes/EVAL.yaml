@@ -577,3 +577,44 @@ cases:
     the disk in the chosen node''s zone.'
   - The response distinguishes the data-PV StorageClass from the ComputeClass
     'storage.bootDiskType' field (which is the node boot disk, a separate concern).
+- id: gke_autopilot_mode_on_standard
+  prompt: We run a GKE Standard cluster but love the Autopilot experience — pay only
+    for what our pods request, no node sizing or node management. We don't want to
+    rebuild the cluster as Autopilot. Can we get that per-workload on our existing
+    Standard cluster, and how?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains that the built-in 'autopilot' (and 'autopilot-spot') ComputeClass
+    lets workloads run in Autopilot mode on a Standard cluster without converting the
+    cluster.
+  - The response describes opting in via a Pod nodeSelector on the 'cloud.google.com/compute-class'
+    label set to 'autopilot', and/or a namespace default via the 'cloud.google.com/default-compute-class'
+    label.
+  - The response explains the billing model is pod-based — you pay for the Pod's resource
+    requests (no charge for system overhead or empty nodes).
+  - The response notes a version/availability requirement (GKE 1.33.1-gke.1107000+
+    and/or the Rapid release channel), OR that the preinstalled class can take time
+    to appear.
+  - The response notes that Pods are placed on Google-managed nodes (no node-pool or
+    node sizing to manage).
+- id: gke_autopilot_mode_large_and_privileged
+  prompt: We want the Autopilot management model on our Standard cluster, but two of
+    our workloads are awkward — one pod needs 64 vCPU, and a separate DaemonSet needs
+    hostNetwork and a privileged container for low-level node monitoring. Can both
+    run under Autopilot mode via compute classes? How should we set this up?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains that the built-in 'autopilot' class is limited to pods up
+    to 28 vCPU, so the 64 vCPU pod must instead use a CUSTOM ComputeClass with the
+    'spec.autopilot.enabled' field set to true.
+  - The response notes that the over-28-vCPU (custom-class) path is billed node-based,
+    not pod-based.
+  - The response explains that Autopilot mode rejects privileged / hostNetwork pods
+    (user-space admission controls), so the privileged hostNetwork DaemonSet CANNOT
+    run in Autopilot mode and must stay on a standard node-based ComputeClass.
+  - The response does NOT suggest disabling Autopilot's security admission or otherwise
+    weakening it to force the privileged pod through.
