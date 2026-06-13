@@ -638,3 +638,23 @@ cases:
   - The response makes clear that billing is determined by the rule type, not by pod
     vCPU size, and does NOT claim that custom Autopilot classes are always node-based
     OR always pod-based.
+- id: gke_karpenter_selector_translation
+  prompt: We just migrated from EKS where we ran Karpenter. We reused our manifests,
+    but our Pods are stuck Pending and the autoscaler logs say noScaleUp / no priority
+    match. The Pods have a nodeSelector whose key is 'machine-family' with value 'c4'.
+    We do have a matching ComputeClass with c4 priorities. What's wrong and how do
+    we fix it?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies that the generic/AWS-style 'machine-family' node selector
+    key is not recognized by GKE, so no node option matches and the Pod stays Pending
+    with noScaleUp.
+  - The response gives the GKE-native translation — the family label key is 'cloud.google.com/machine-family'
+    (and/or 'node.kubernetes.io/instance-type' for a specific machine shape).
+  - The response recommends, as the cleaner fix, selecting the ComputeClass itself
+    via the 'cloud.google.com/compute-class' nodeSelector and letting the priorities
+    list choose the machine family.
+  - The response does NOT misdiagnose the root cause as a stockout, quota, or taint/toleration
+    issue (the selector key is the problem).
