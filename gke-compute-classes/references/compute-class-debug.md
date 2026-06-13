@@ -51,7 +51,7 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 - **Fix:** Upgrade cluster or temporarily remove `imageType`.
 
 ## Symptom 7: Pods Ignoring ComputeClass
-- **Fixes:** Ensure pod has `nodeSelector: cloud.google.com/compute-class: <NAME>`. Move conflicting constraints (e.g., `machine-family`) into ComputeClass. Verify manual pools have correct label/taint. Check if Pod requests exceed priority bounds.
+- **Fixes:** Ensure pod has `nodeSelector: cloud.google.com/compute-class: <NAME>`. **Translate non-GKE node selectors** — a generic/AWS-style `machine-family: c4` won't match; use GKE-native `cloud.google.com/machine-family: c4` (family) or `node.kubernetes.io/instance-type` (shape), or better, move the constraint into the ComputeClass `priorities[]`. Verify manual pools have correct label/taint. Check if Pod requests exceed priority bounds.
 
 ## Symptom 8: "ANY" Reservation Bypasses Fallbacks
 - **Cause:** `reservations.affinity: AnyBestEffort` falls back to On-Demand at GCE layer.
