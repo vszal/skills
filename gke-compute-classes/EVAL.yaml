@@ -196,6 +196,28 @@ cases:
   - The response still applies the standard ComputeClass rules (CUD alignment comment
     on machineType/machineFamily, EXAMPLE TEMPLATE label, unquoted integers, no schema
     hallucinations).
+- id: gke_compute_class_stockout_cooldown_ladder
+  prompt: My ComputeClass falls straight from c4a (preferred) to e2 (final fallback)
+    with BALANCED location policy across 3 zones. Whenever one zone runs out of c4a,
+    far too many of my pods end up on e2 — even pods that could run anywhere. How
+    should I restructure the ComputeClass priorities to avoid this?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains that a hard zonal stockout on the c4a tier trips a ~5-minute
+    global cooldown on that whole tier, during which even unconstrained pods cascade
+    to the next obtainable tier (e2) across all zones.
+  - The response recommends inserting an intermediate machine family (e.g. n4a) as
+    a priority tier between c4a and e2, so a cooldown drops one rung to n4a instead
+    of straight to e2.
+  - The response notes that BALANCED is best-effort and on its own just skews unconstrained
+    scale-up to the healthy zones (it is not the cause of the excessive fallback).
+  - The response recommends isolating stateful / zonal-PV workloads (their forced zonal
+    scale-ups trip the cooldown) into a separate ComputeClass from the stateless fleet.
+  - The response still applies the standard ComputeClass rules (CUD alignment comment
+    on machineFamily, EXAMPLE TEMPLATE label, unquoted integers, no schema hallucinations)
+    if it emits YAML.
 - id: gke_compute_class_location_reservation_conflict
   prompt: 'I''m getting an error on my ComputeClass status: ''location config with
     specific reservations enabled''. I have a global location block and a specific

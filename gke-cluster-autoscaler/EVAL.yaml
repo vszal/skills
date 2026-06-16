@@ -578,6 +578,34 @@ cases:
   - The response cautions that the user must also consider node upgrade strategies,
     recommending Blue/Green Upgrades over Surge Upgrades to honor the longer termination
     period.
+- id: ca_balanced_stockout_cooldown_cascade
+  prompt: I'm a GKE operator using Compute Classes on manually created node pools.
+    I prefer c4a, then n4a, with e2 as a final fallback, and I want roughly balanced
+    scale-up across my 3 zones. I'm seeing way too much fallback to e2. I suspect
+    location.locationPolicy=BALANCED is overly strict and falls back whenever one
+    of my zones is stocked out of capacity. Is that what's happening?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response corrects the misdiagnosis: BALANCED is best-effort, not strict — for
+    UNCONSTRAINED pods a single-zone stockout of the preferred family makes the autoscaler
+    SKEW that tier's scale-up to the healthy zones (e.g. 0/3/3), with no fallback to
+    e2.
+  - The response explains the real cause of the excess e2 fallback is a ~5-minute GLOBAL
+    cooldown on the preferred (c4a) priority tier, triggered by a hard GCE stockout
+    error (out_of_resources / ZONE_RESOURCE_POOL_EXHAUSTED).
+  - The response explains the cooldown is triggered by a CONSTRAINED pod (e.g. bound
+    to a zonal PersistentVolume or carrying a zonal nodeSelector/affinity) that FORCES
+    a c4a scale-up attempt in the stocked-out zone — not by unconstrained pods.
+  - The response notes that during the cooldown window all pending pods (even unconstrained
+    ones) skip c4a and route to the next obtainable tier across all zones.
+  - The response recommends inserting an intermediate machine family (n4a) as a priority
+    tier between c4a and e2 so a cooldown falls one rung to n4a rather than straight
+    to e2.
+  - The response recommends isolating stateful / zonal-PV workloads (separate ComputeClass
+    or namespace) so their forced zonal stockouts don't cascade the stateless fleet
+    to e2.
 - id: ca_new_reservation_cache_lag
   prompt: We created a specific compute reservation in us-central1-a a few minutes
     ago and pointed our ComputeClass at it, but the cluster autoscaler still won't
