@@ -680,3 +680,41 @@ cases:
     list choose the machine family.
   - The response does NOT misdiagnose the root cause as a stockout, quota, or taint/toleration
     issue (the selector key is the problem).
+- id: gke_compute_class_dedication_taint_not_redundant
+  prompt: A teammate says any taint under 'nodePoolConfig.taints' is pointless because
+    ComputeClasses already auto-taint the nodes, and told me to delete the 'dedicated=ml:NoSchedule'
+    taint I added to keep general workloads off our ML nodes. Are they right?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response explains the teammate is only partly right — the ONLY redundant taint
+    is re-adding 'cloud.google.com/compute-class' on auto-created pools (GKE applies
+    and auto-tolerates that key); an intentional dedication taint like 'dedicated=ml'
+    is valid and should be KEPT.
+  - The response states that workloads intended to run on those ML nodes need a matching
+    toleration for 'dedicated=ml' (normal Kubernetes contract).
+  - The response notes (or implies) that a custom taint no pending pod tolerates will
+    block scale-from-zero unless it uses a Cluster-Autoscaler-ignored prefix — i.e.
+    it does not silently claim the dedication taint is free of scheduling effects.
+  - The response does NOT issue a blanket 'never add taints to nodePoolConfig' rule.
+- id: gke_compute_class_redundant_compute_class_taint_removed
+  prompt: I'm using node pool auto-creation with a ComputeClass named 'web-tier'. To
+    be safe I also added a taint under nodePoolConfig.taints with key 'cloud.google.com/compute-class'
+    and value 'web-tier' (NoSchedule), and now my pods that select the ComputeClass
+    won't schedule. What's wrong?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies that re-adding the 'cloud.google.com/compute-class' taint
+    on auto-created pools is redundant — node pool auto-creation already applies AND
+    auto-tolerates that exact key.
+  - The response tells the user to REMOVE the duplicate 'cloud.google.com/compute-class'
+    entry from nodePoolConfig.taints (and does NOT tell them to add a matching toleration
+    to fix it).
+  - The response does NOT over-generalize into a blanket 'never put taints in nodePoolConfig'
+    rule — it scopes the redundancy specifically to the 'cloud.google.com/compute-class'
+    key on auto-created pools.
+  - 'Bonus: the response notes that manual node pools, by contrast, DO require the
+    cloud.google.com/compute-class label + taint to bind to the ComputeClass.'
