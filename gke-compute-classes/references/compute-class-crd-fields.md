@@ -29,7 +29,7 @@ spec:
 Applied to pools created by the autoscaler.
 - `imageType`: `cos_containerd`, `ubuntu_containerd` (must be **lowercase**).
 - `nodeLabels`: Key-value pairs.
-- `taints`: List of `{ key, value, effect }`. **DO NOT add `cloud.google.com/compute-class` here; GKE applies and tolerates it automatically for node pool auto-creation.**
+- `taints`: List of `{ key, value, effect }`. Valid for an intentional dedication taint; keys **cannot contain `kubernetes.io`** (GKE Warden rejects it). **DO NOT re-add `cloud.google.com/compute-class` on auto-created pools — GKE applies and auto-tolerates it. (Manual pools, by contrast, REQUIRE it as label + taint to bind.)**
 - `serviceAccount`: Identity for nodes (use custom SA with least privilege, not default).
 
 ## `priorities[]` Fields

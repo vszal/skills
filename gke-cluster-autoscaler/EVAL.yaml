@@ -588,7 +588,7 @@ cases:
     products:
     - GKE
   rubric:
-  - The response corrects the misdiagnosis: BALANCED is best-effort, not strict — for
+  - The response corrects the misdiagnosis — BALANCED is best-effort, not strict — for
     UNCONSTRAINED pods a single-zone stockout of the preferred family makes the autoscaler
     SKEW that tier's scale-up to the healthy zones (e.g. 0/3/3), with no fallback to
     e2.
