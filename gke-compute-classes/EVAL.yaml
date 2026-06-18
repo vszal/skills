@@ -718,3 +718,85 @@ cases:
     key on auto-created pools.
   - 'Bonus: the response notes that manual node pools, by contrast, DO require the
     cloud.google.com/compute-class label + taint to bind to the ComputeClass.'
+- id: gke_compute_class_governance_rbac_crud
+  prompt: Only our platform team should be able to create or modify ComputeClasses;
+    application teams keep editing them. How do I lock down who can change ComputeClasses?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response uses Kubernetes RBAC with a ClusterRole (and ClusterRoleBinding),
+    noting that ComputeClass is a cluster-scoped CRD so a namespaced Role is wrong.
+  - The response specifies the correct RBAC target - apiGroups 'cloud.google.com'
+    and resources 'computeclasses'.
+  - The response covers the mutating verbs (create, update) and ideally notes that
+    patch and delete must also be restricted for a complete lockdown.
+  - The response recommends binding to a Google Group for centralized membership and/or
+    verifying with 'kubectl auth can-i create computeclasses.cloud.google.com --as=<user>'.
+- id: gke_compute_class_governance_vap_consumption
+  prompt: We have an expensive GPU ComputeClass. RBAC already controls who can edit it,
+    but teams in the 'dev' namespace keep scheduling their pods onto it. How do I stop
+    workloads in that namespace from using that ComputeClass?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response recognizes that RBAC cannot restrict consumption (referencing a CC
+    is a Pod-spec field, not a CRUD verb on the CC object) and reaches for a ValidatingAdmissionPolicy.
+  - The response explains the policy must block all access paths - nodeSelector, nodeAffinity,
+    AND tolerations - not just nodeSelector.
+  - The response calls out the wildcard toleration (operator Exists with no key) as
+    a path that must be blocked because it tolerates every taint including the CC taint.
+  - The response scopes the binding to the namespace (namespaceSelector) and uses validationActions
+    Deny (ideally Deny + Audit, with Audit first to find existing violators).
+- id: gke_compute_class_governance_vap_bypass_gap
+  prompt: 'I wrote a ValidatingAdmissionPolicy to keep workloads off our restricted
+    ComputeClass - it checks that the pod nodeSelector does not set cloud.google.com/compute-class
+    to the restricted name. But a user still got scheduled onto it. How did they get
+    around it?'
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response identifies that checking only nodeSelector leaves nodeAffinity and
+    tolerations as open bypass paths (a matching toleration to the CC taint, or node
+    affinity on the compute-class label, reaches the CC).
+  - The response specifically calls out the wildcard toleration (operator Exists with
+    no key) tolerating every taint as a bypass.
+  - The response notes the policy must also match the workload kind the user actually
+    created - if matchConstraints only covers pods/deployments, a StatefulSet, Job,
+    CronJob, or DaemonSet slips through.
+  - The response recommends extending the CEL/matchConstraints to cover all paths and
+    all pod-controller kinds rather than only the nodeSelector on bare pods.
+- id: gke_compute_class_governance_rbac_vs_vap
+  prompt: For ComputeClass governance, when should I use RBAC versus a ValidatingAdmissionPolicy?
+    Don't they do the same thing?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response distinguishes the two layers - RBAC governs CRUD on the ComputeClass
+    object (create/update/patch/delete), while the VAP governs consumption (whether a
+    workload may request the CC).
+  - The response explains they are NOT interchangeable - RBAC cannot stop a workload
+    from referencing a CC, and a VAP does not control who can edit the CC object.
+  - The response recommends using both layers together for complete governance.
+  - 'Bonus: the response notes RBAC for ComputeClass is cluster-scoped (ClusterRole)
+    and the VAP is scoped per-namespace via its binding.'
+- id: gke_compute_class_governance_no_native_namespace_field
+  prompt: Instead of an admission policy, can't I just list the allowed namespaces
+    directly on the ComputeClass object - like a namespacePolicy or allowedNamespaces
+    field on the spec - so only those namespaces can use it?
+  metadata:
+    products:
+    - GKE
+  rubric:
+  - The response states that the ComputeClass spec has NO such field (no namespacePolicy
+    / allowedNamespaces / namespace allow-list) for restricting consumption, and does
+    NOT invent or hallucinate one.
+  - The response explains that consumption restriction is admission-time only and redirects
+    the user to a ValidatingAdmissionPolicy.
+  - The response does not confuse this with RBAC (which governs CRUD on the CC object,
+    not which namespaces may consume it).
+  - 'Bonus: the response notes the VAP is where namespace scoping lives (via the binding''s
+    namespaceSelector), which is the mechanism the user is actually reaching for.'
