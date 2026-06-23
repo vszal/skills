@@ -17,6 +17,11 @@
 
 set -euo pipefail
 
+cleanup() {
+  rm -f .tmp_pool_counts.$$
+}
+trap cleanup EXIT
+
 usage() {
   cat >&2 <<EOF
 Usage: $0 [-n NAMESPACE]
