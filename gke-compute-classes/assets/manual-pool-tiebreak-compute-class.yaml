@@ -1,3 +1,4 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
 apiVersion: cloud.google.com/v1
 kind: ComputeClass
 metadata:
@@ -24,7 +25,7 @@ spec:
     - n4-spot-usc1b
 
   # 3. node pool auto-creation fallback — intent-based only (node pool auto-creation pools have no stable names to reference).
-  - machineFamily: n4
+  - machineFamily: n4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     spot: false
     location:

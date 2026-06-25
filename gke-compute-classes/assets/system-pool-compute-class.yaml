@@ -1,3 +1,4 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
 # Dedicated ComputeClass for non-DaemonSet kube-system pods.
 #
 # Problem this solves: kube-system pods (metrics-server, coredns,
@@ -35,7 +36,7 @@ spec:
     enabled: true
   whenUnsatisfiable: ScaleUpAnyway        # never block a kube-system pod
   priorities:
-  - machineFamily: n4
+  - machineFamily: n4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 4
     spot: false
     location:
