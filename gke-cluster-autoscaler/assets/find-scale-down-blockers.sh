@@ -156,7 +156,6 @@ else
     PROJECT="${BASH_REMATCH[1]}"
     LOCATION="${BASH_REMATCH[2]}"
     CLUSTER="${BASH_REMATCH[3]}"
-    
     POOLS_JSON=$(gcloud container node-pools list --cluster="$CLUSTER" --location="$LOCATION" --project="$PROJECT" --format="json(name,autoscaling.minNodeCount)" 2>/dev/null || echo "[]")
     if [[ "$POOLS_JSON" != "[]" ]]; then
       echo "$NODES_JSON" | jq -r '.items[] | .metadata.labels["cloud.google.com/gke-nodepool"]' | grep -v "^null$" | sort | uniq -c > .tmp_pool_counts.$$ || true

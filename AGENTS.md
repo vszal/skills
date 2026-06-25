@@ -14,3 +14,20 @@
 - If available, offload evaluation to locally running models using scripts which live in `~/Code/skill-evaluation-tools` (own repo + CLAUDE.md). Invoke via stable symlinks: `~/.local/bin/run-eval-iteration.sh` (full round) / `~/.local/bin/run-eval-local.sh` (single). Grading stays on cloud model.
 - If `~/Code/skill-evaluation-tools` is not present, use weaker cloud models like Haiku or Gemini Flash for evaluation, grading stays with more advanced cloud model.
 
+## EVAL.yaml Formatting Rule
+When creating or updating `EVAL.yaml` evaluation suite files under this workspace, always use the following format:
+* Use `name` instead of `id`.
+* Use `prompt` for the test prompt.
+* Use `expectations` (as a list of strings) instead of `rubric`.
+* Do not include the `metadata` or `products` fields.
+
+### Example Structure:
+```yaml
+cases:
+- name: "test_case_name"
+  prompt: "How do I do X?"
+  expectations:
+  - "The response should explain Y."
+  - "The response should recommend Z."
+```
+
