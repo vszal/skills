@@ -1,7 +1,7 @@
 ---
 name: gke-cluster-autoscaler
 description: >-
-  Manages and troubleshoots GKE node autoscaling, node auto-provisioning, and optimization profiles. Use when the user has issues with GKE scaling, nodes not scaling up or down, zonal stockouts, or capacity buffers. Do not use for ComputeClass-specific YAML generation or priority configuration (defer to gke-compute-class).
+  Trigger on mention of GKE cluster autoscaler,  node autoscaling, node pool auto-creation / node auto-provisioning. Provides guidance on enabling and optimizing cluster autoscaler, best practices, and troubleshooting issues such as nodes not scaling up or down, zonal stockouts, or capacity buffers. Do not use for ComputeClass-specific YAML generation or priority configuration (defer to gke-compute-classes skill).
 ---
 
 # GKE Cluster Autoscaler
