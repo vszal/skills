@@ -45,7 +45,7 @@ spec:
         cpuManagerPolicy: static
 
   priorities:
-  - machineFamily: c4d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+  - machineFamily: c4d  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     # C4D provides the absolute best price-performance for Spark per user analysis.
     # Uses Titanium I/O offload for ultra-low latency shuffles.
     storage:
@@ -55,7 +55,7 @@ spec:
     spot: false
     priorityScore: 100
 
-  - machineFamily: c4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+  - machineFamily: c4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     # C4 fallback maintaining Titanium Local SSD and 200Gbps+ networking.
     storage:
       bootDiskSize: 100
@@ -64,7 +64,7 @@ spec:
     spot: false
     priorityScore: 80
 
-  - machineFamily: c3d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+  - machineFamily: c3d  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     # C3D (AMD) high-performance fallback with Local SSDs.
     storage:
       bootDiskSize: 100
