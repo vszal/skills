@@ -1,3 +1,4 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
 apiVersion: cloud.google.com/v1
 kind: ComputeClass
 metadata:
@@ -16,31 +17,31 @@ spec:
   # tie-break is by lowest unit cost.
   priorities:
   # Score 100 — top tier: three equivalent Gen-4 On-Demand families
-  - machineFamily: c4d
+  - machineFamily: c4d  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     spot: false
     priorityScore: 100
-  - machineFamily: c4
+  - machineFamily: c4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     spot: false
     priorityScore: 100
-  - machineFamily: n4
+  - machineFamily: n4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     spot: false
     priorityScore: 100
 
   # Score 50 — fallback tier: two Gen-2 alternatives with broader availability
-  - machineFamily: n2
+  - machineFamily: n2  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     spot: false
     priorityScore: 50
-  - machineFamily: n2d
+  - machineFamily: n2d  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     spot: false
     priorityScore: 50
 
   # Score 10 — floor: e2 with widest zone net, guarantees execution
-  - machineFamily: e2
+  - machineFamily: e2  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     spot: false
     location:

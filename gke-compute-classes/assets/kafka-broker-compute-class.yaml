@@ -1,3 +1,4 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
 apiVersion: cloud.google.com/v1
 kind: ComputeClass
 metadata:
@@ -22,7 +23,7 @@ spec:
           fs.file-max: 1000000       # broker holds many open file descriptors
   priorities:
   # 1. n4 with local SSD for page cache + segment scratch
-  - machineFamily: n4
+  - machineFamily: n4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
     minMemoryGb: 64
     spot: false
@@ -32,7 +33,7 @@ spec:
       localSSDCount: 2
 
   # 2. c4 fallback (Gen 4) — same zones, no local SSD
-  - machineFamily: c4
+  - machineFamily: c4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
     minMemoryGb: 64
     spot: false
@@ -41,7 +42,7 @@ spec:
       bootDiskSize: 100
 
   # 3. Last resort — n4 with wider zone net
-  - machineFamily: n4
+  - machineFamily: n4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 16
     minMemoryGb: 64
     spot: false

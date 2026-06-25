@@ -1,3 +1,4 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
 apiVersion: cloud.google.com/v1
 kind: ComputeClass
 metadata:
@@ -27,21 +28,21 @@ spec:
   # Score 100 — top tier: three interchangeable Spot families. Vendor and
   # generation spread (Intel Gen 1 / AMD Gen 2 / Intel Gen 4) for obtainability;
   # ComputeClass's cost tie-break does the price selection, so the order here doesn't matter.
-  - machineFamily: e2
+  - machineFamily: e2  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 4
     spot: true
     priorityScore: 100
-  - machineFamily: n2d
+  - machineFamily: n2d  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 4
     spot: true
     priorityScore: 100
-  - machineFamily: n4
+  - machineFamily: n4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 4
     spot: true
     priorityScore: 100
 
   # Score 10 — On-Demand floor — guarantees execution if all Spot is exhausted
-  - machineFamily: e2
+  - machineFamily: e2  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 4
     spot: false
     priorityScore: 10

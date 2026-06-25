@@ -1,3 +1,4 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
 apiVersion: cloud.google.com/v1
 kind: ComputeClass
 metadata:
@@ -20,7 +21,7 @@ spec:
           net.core.somaxconn: 1024
   priorities:
   # 1. c4d — Gen 4 AMD Turin, strongest price/perf for Redis (memory-intensive)
-  - machineFamily: c4d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+  - machineFamily: c4d  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     minMemoryGb: 64
     spot: false
@@ -29,7 +30,7 @@ spec:
       bootDiskSize: 50
 
   # 2. n4d — Gen 4 AMD Turin fallback, strong price/perf
-  - machineFamily: n4d # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+  - machineFamily: n4d  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     minMemoryGb: 64
     spot: false
@@ -38,7 +39,7 @@ spec:
       bootDiskSize: 50
 
   # 3. c4 — Gen 4 Intel fallback
-  - machineFamily: c4 # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
+  - machineFamily: c4  # IMPORTANT: Align machineFamily with your existing CUDs/Reservations
     minCores: 8
     minMemoryGb: 64
     spot: false

@@ -1,3 +1,4 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
 apiVersion: cloud.google.com/v1
 kind: ComputeClass
 metadata:
@@ -10,29 +11,7 @@ spec:
     location:
       zones: ['us-central1-a', 'us-central1-b', 'us-central1-c']
   priorities:
-  # 1. Spot, single L4 with MPS — cheapest path for tolerant workloads
-  - gpu:
-      count: 1
-      type: nvidia-l4
-      driverVersion: default
-      gpuSharing:
-        sharingStrategy: MPS
-        maxSharedClientsPerGPU: 4
-    machineType: g2-standard-8
-    spot: true
-
-  # 2. Spot, 2× L4 — packs more concurrent clients per node (8 clients/node)
-  - gpu:
-      count: 2
-      type: nvidia-l4
-      driverVersion: default
-      gpuSharing:
-        sharingStrategy: MPS
-        maxSharedClientsPerGPU: 4
-    machineType: g2-standard-24
-    spot: true
-
-  # 3. On-Demand floor with sharing
+  # 1. On-Demand floor with sharing — preferred for latency-sensitive multi-tenancy
   - gpu:
       count: 1
       type: nvidia-l4
@@ -42,3 +21,25 @@ spec:
         maxSharedClientsPerGPU: 4
     machineType: g2-standard-8
     spot: false
+
+  # 2. Spot, single L4 with MPS — cost fallback
+  - gpu:
+      count: 1
+      type: nvidia-l4
+      driverVersion: default
+      gpuSharing:
+        sharingStrategy: MPS
+        maxSharedClientsPerGPU: 4
+    machineType: g2-standard-8
+    spot: true
+
+  # 3. Spot, 2× L4 — larger cost fallback (packs 8 clients/node)
+  - gpu:
+      count: 2
+      type: nvidia-l4
+      driverVersion: default
+      gpuSharing:
+        sharingStrategy: MPS
+        maxSharedClientsPerGPU: 4
+    machineType: g2-standard-24
+    spot: true
