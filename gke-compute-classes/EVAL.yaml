@@ -67,7 +67,7 @@ cases:
   expectations:
   - The response asks or identifies if the reservation affinity is set to 'AnyBestEffort' or 'Automatic'.
   - The response explains that 'AnyBestEffort' falls back to On-Demand at the GCE layer, bypassing the ComputeClass fallback logic.
-  - The response suggests switching to 'Specific' affinity with named reservations to allow proper ComputeClass fallback.
+  - The response suggests switching to 'AnyThenFail' affinity (GKE 1.36.0-gke.3204000+) or 'Specific' affinity with named reservations to allow proper ComputeClass fallback.
 - name: gke_compute_class_balanced_ha_scaleup
   prompt: We want to ensure our web frontend scales up in a balanced way across three zones (us-central1-a, b, c) for high availability using reservations. How do we configure the ComputeClass priorities to achieve roughly equal zonal distribution?
   expectations:

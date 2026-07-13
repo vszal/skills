@@ -2,11 +2,8 @@
 
 [![Install via skills.sh](https://img.shields.io/badge/skills.sh-install-green)](https://skills.sh/vszal/skills)
 
-This repository contains experimental [Agent Skills](https://agentskills.io/home) for GKE features like ComputeClasses. This is not an official Google repo. 
+This repository contains development [Agent Skills](https://agentskills.io/home) for GKE node autoscaling features like ComputeClasses and Cluster Autoscaler. This is not an official Google repo. 
 Use the [Google skills repo](https://github.com/google/skills) for more stable verions.
-
-> [!NOTE]
-> This repository is under active development.
 
 ## Installation
 
@@ -21,6 +18,6 @@ repo to install.
 
 | Skill | Description | Maturity |
 | :--- | :--- | :--- |
-| [**GKE ComputeClasses**](./gke-compute-classes) | Priority-based node provisioning and fallback management. | *Experimental* |
-| [**GKE Cluster Autoscaler**](./gke-cluster-autoscaler) | Optimization, consolidation tuning, and debugging pending pods. | *Experimental* |
+| [**GKE ComputeClasses**](./gke-compute-classes) | Priority-based node provisioning and fallback management. | [Google skills repo](https://github.com/google/skills)  |
+| [**GKE Cluster Autoscaler**](./gke-cluster-autoscaler) | Optimization, consolidation tuning, and debugging pending pods. | [Google skills repo](https://github.com/google/skills)  |
 | [**GKE Storage**](./gke-storage) | Guidance on block, shared, and volume management for GKE. | *Experimental* |

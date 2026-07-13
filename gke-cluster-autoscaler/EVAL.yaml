@@ -185,6 +185,7 @@ cases:
   - The response explains that unlike CUDs, capacity reservations are NOT automatically consumed by the cluster autoscaler.
   - The response states that reservations must be explicitly targeted via the ComputeClass `reservations` block (for node
     pool auto-creation) or the Node Pool API (for manual pools).
+  - The response suggests using 'AnyThenFail' (GKE 1.36.0-gke.3204000+) or 'Specific' affinity when targeting reservations via ComputeClass to preserve fallback behavior.
   - The response contrasts this with CUDs, which ARE automatically consumed when the autoscaler provisions matching machine
     families.
 - name: ca_daemonset_scale_down
