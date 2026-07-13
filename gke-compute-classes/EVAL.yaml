@@ -66,7 +66,7 @@ cases:
   prompt: Our ComputeClass has a reservation rule at the top, followed by a Spot fallback rule. However, when the reservation is full, the pods just stay pending or land on standard on-demand nodes instead of falling back to our Spot rule. Why isn't the fallback working?
   expectations:
   - The response asks or identifies if the reservation affinity is set to 'AnyBestEffort' or 'Automatic'.
-  - The response explains that 'AnyBestEffort' falls back to On-Demand at the GCE layer, bypassing the ComputeClass fallback logic.
+  - The response explains that 'AnyBestEffort' consumes standard On-Demand capacity before allowing ComputeClass to evaluate lower priorities.
   - The response suggests switching to 'AnyThenFail' affinity (GKE 1.36.0-gke.3204000+) or 'Specific' affinity with named reservations to allow proper ComputeClass fallback.
 - name: gke_compute_class_balanced_ha_scaleup
   prompt: We want to ensure our web frontend scales up in a balanced way across three zones (us-central1-a, b, c) for high availability using reservations. How do we configure the ComputeClass priorities to achieve roughly equal zonal distribution?

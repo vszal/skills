@@ -204,8 +204,7 @@ not block the user's initial request.** If asked for YAML/recommendations:
     `priorities[].storage.bootDiskType` (the node boot disk). Asset:
     `dynamic-rwo-storageclass.yaml`.
 -   **Reservation fallback bypass:** `reservations.affinity: AnyBestEffort` (or
-    `Automatic`) falls back to On-Demand at the GCE layer, silently skipping
-    lower ComputeClass priorities — so a Spot fallback never fires. Use
+    `Automatic`) consumes On-Demand capacity at the GCE layer before allowing ComputeClass to evaluate lower priorities. This means a cheaper or Spot fallback you defined won't fire unless On-Demand is also completely exhausted. Use
     `AnyThenFail` affinity (requires GKE 1.36.0-gke.3204000+) to skip On-Demand and fall back to the next ComputeClass priority, or use `Specific` affinity with named reservations.
     (Not a `whenUnsatisfiable` problem.)
 -   **Karpenter/EKS selector translation (migration #1 trap):** AWS-style or
