@@ -206,7 +206,7 @@ not block the user's initial request.** If asked for YAML/recommendations:
 -   **Reservation fallback bypass:** `reservations.affinity: AnyBestEffort` (or
     `Automatic`) falls back to On-Demand at the GCE layer, silently skipping
     lower ComputeClass priorities — so a Spot fallback never fires. Use
-    `Specific` affinity with named reservations so ComputeClass fallback works.
+    `AnyThenFail` affinity (requires GKE 1.36.0-gke.3204000+) to skip On-Demand and fall back to the next ComputeClass priority, or use `Specific` affinity with named reservations.
     (Not a `whenUnsatisfiable` problem.)
 -   **Karpenter/EKS selector translation (migration #1 trap):** AWS-style or
     generic Pod `nodeSelector` keys don't match GKE — a Pod selecting

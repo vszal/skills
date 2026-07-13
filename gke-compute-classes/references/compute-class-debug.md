@@ -101,7 +101,7 @@ Check **Autoscaler Visibility logs**
 
 -   **Cause:** `reservations.affinity: AnyBestEffort` falls back to On-Demand at
     GCE layer.
--   **Fix:** Use `affinity: Specific` with named reservations.
+-   **Fix:** Use `affinity: AnyThenFail` (GKE 1.36.0-gke.3204000+) or `affinity: Specific` with named reservations.
 
 ## Symptom 9: Disk/PV Attachment Fail
 
