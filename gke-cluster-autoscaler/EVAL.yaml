@@ -379,3 +379,12 @@ cases:
     against it.
   - The response does NOT misdiagnose this as a stockout/out-of-resources, quota, or selector/affinity misconfiguration as
     the primary cause (the reservation has free capacity; the issue is cache lag).
+- name: ca_capacity_quota_granular_limits
+  prompt: "On GKE 1.36.2, how can I use CapacityQuota to enforce granular autoscaling limits such as restricting a specific zone to 64 nodes or capping a GPU accelerator type to 16 GPUs?"
+  expectations:
+  - "The response identifies CapacityQuota as a cluster-scoped CRD in autoscaling.x-k8s.io/v1beta1."
+  - "The response explains how to use selector.matchLabels for zonal limits (topology.kubernetes.io/zone) and GPU limits (cloud.google.com/gke-accelerator)."
+  - "The response notes how to observe limits via status.used and status.conditions (valid condition)."
+  - "The response mentions that CapacityQuota limits are enforced by the Cluster Autoscaler during scale-up evaluations."
+
+
