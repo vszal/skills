@@ -338,5 +338,11 @@ cases:
   - The response states that the ComputeClass spec has NO such field (no namespacePolicy / allowedNamespaces / namespace allow-list) for restricting consumption, and does NOT invent or hallucinate one.
   - The response explains that consumption restriction is admission-time only and redirects the user to a ValidatingAdmissionPolicy.
   - The response does not confuse this with RBAC (which governs CRUD on the CC object, not which namespaces may consume it).
-  - 'Bonus: the response notes the VAP is where namespace scoping lives (via the binding''s namespaceSelector), which is the mechanism the user is actually reaching for.'
+- name: gke_compute_class_capacity_quota_cud_spillover
+  prompt: "We purchased a 100-core Committed Use Discount (CUD) for N4 machines. We want our GKE workloads to use N4 first to maximize our CUD, but once that 100-core CUD is exhausted, we want excess workload demand to automatically spill over to N4D or C4 instead of pods getting stuck in Pending. How do we configure our ComputeClass and autoscaler limits to achieve this?"
+  expectations:
+  - "The response recommends using a CapacityQuota (autoscaling.x-k8s.io/v1beta1) with a 100 CPU limit to cap N4 scale-up."
+  - "The response recommends specifying both 'cloud.google.com/compute-class' and 'cloud.google.com/machine-family: n4' in the CapacityQuota selector matchLabels so only N4 is capped."
+  - "The response recommends an ordered priority list in the ComputeClass with N4 as the top priority and N4D or C4 as fallback priorities."
+  - "The response explains that because CUDs apply automatically to matching machine families and fallback families remain uncapped by the CapacityQuota, excess demand seamlessly spills over once the 100-core N4 CUD is exhausted."
 suite_name: gke-compute-classes-eval

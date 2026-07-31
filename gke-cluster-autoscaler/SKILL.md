@@ -18,6 +18,7 @@ description: >-
 
 ## Provisioning Enablement
 - **Modern GKE (1.33.3+):** Use ComputeClasses (`spec.nodePoolAutoCreation.enabled: true`). Cluster-level Node Auto Provisioning not required.
+- **Granular Limits (GKE 1.36.2+):** Apply `CapacityQuota` (`autoscaling.x-k8s.io/v1beta1`) to cap scale-up (`cpu`, `memory`, `nodes`, `nvidia.com/gpu`) for subsets of nodes matched via `selector.matchLabels` (zonal, accelerator, ComputeClass) or `selector.matchExpressions` (`machine-family In [c2,c3,c3d]`). Enforced by Cluster Autoscaler; does not restrict manual scaling. Ref: `ca-capacity-quotas.md`; assets `capacity-quota-examples.yaml`.
 - **Older GKE:** `gcloud container clusters update <C> --enable-autoprovisioning --max-cpu=200 --max-memory=800`
 - **Manual Pools:** `gcloud container node-pools update <P> --enable-autoscaling --min-nodes=1 --max-nodes=10`
 
@@ -32,6 +33,7 @@ description: >-
 - **Pool Fragmentation:** Avoid pool limits (>200 pools degrades performance) by using intent-based sizing (`machineFamily: n4`) instead of SKU-pinned ComputeClasses.
 - **CUDs vs Reservations:** CUDs are auto-consumed by matched machine families (no config). Reservations are NOT auto-consumed; target them explicitly via ComputeClass `reservations` block or Node Pool API. When using ComputeClass, prefer `AnyThenFail` (GKE 1.36.0-gke.3204000+) or `Specific` affinity over `AnyBestEffort` to preserve fallback priorities. **New reservations lag Cluster Autoscaler's cache:** wait **≥30 min** after creating a reservation before driving scale-up against it — targeting it sooner makes Cluster Autoscaler back off that reservation and stall.
 - **CapacityBuffer (pre-warm / instant nodes / provisioning lag):** When nodes take too long to appear on traffic spikes and `--min-nodes` is unwanted, use the CapacityBuffer CRD — placeholder pods hold warm idle nodes, evicted instantly by real workloads. Size via `replicas: N` (fixed) or `percentage: 20` (dynamic). Example: `assets/capacity-buffer-serving.yaml`.
+- **CapacityQuota (granular scale-up caps):** Check `status.conditions[type="cluster-autoscaler.kubernetes.io/valid"]` (`True` = enforced). CA emits `noScaleUp` (`exceeded quota: "CapacityQuota/<name>"`, resources: `<res>`) when blocked. Do NOT use `node.kubernetes.io/instance-type` in `CapacityQuota` selectors (use ComputeClass `machineType` instead).
 - **Scale-up blockers:** Spot/GCE stockout (`scale.up.error.out.of.resources` = capacity exhausted in that zone/region; fix by adding an On-Demand fallback to the ComputeClass priorities — defer to `gke-compute-class` for that YAML — and/or `locationPolicy: ANY` to try other zones), GCE Quota (`scale.up.error.quota.exceeded`), Pod IP exhaustion (`scale.up.error.ip.space.exhausted`), `--max-nodes` pool limits, or GKE version/machine family mismatch. Quota/capacity errors trigger exponential backoff.
 - **Zonal stockout cooldown cascade (excess fallback to a lower tier):** A hard GCE stockout error (`out_of_resources` / `ZONE_RESOURCE_POOL_EXHAUSTED`) puts the **entire affected priority tier on a ~5-min GLOBAL cooldown**. During that window all pending pods — even unconstrained ones — skip that tier and route to the next obtainable priority across ALL zones, so the fleet drains toward the lowest tier. The trigger is a **constrained** pod (zonal PV / zonal `nodeSelector`/affinity) that FORCES a scale-up in the stocked-out zone; unconstrained pods alone never trip it (`BALANCED` just skews them to healthy zones — see Location Policy). Fixes (defer YAML to `gke-compute-class`): (1) insert an **intermediate-family priority tier** between the preferred and bottom families so a cooldown falls one rung, not straight to the cheapest tier; (2) **isolate zonal-PV/stateful workloads** (own ComputeClass/namespace) so their forced stockouts don't cascade the stateless fleet; (3) pod `topologySpreadConstraints` with `DoNotSchedule`.
 - **Scale-down blockers:** See the CRITICAL `SCALE-DOWN BLOCKERS` rule above for the full enumeration to walk.
@@ -45,6 +47,7 @@ description: >-
 
 ## References
 - [ca-provisioning.md](./references/ca-provisioning.md): Enablement methods and cutover strategies.
+- [ca-capacity-quotas.md](./references/ca-capacity-quotas.md): Granular resource limits via CapacityQuota CRD.
 - [ca-optimization.md](./references/ca-optimization.md): Profiles, location policies, CUD vs Reservation.
 - [ca-debug.md](./references/ca-debug.md): Scale-up/down blockers, stalls, log analysis.
 - [ca-capacity-buffers.md](./references/ca-capacity-buffers.md): CapacityBuffer CRD for standby capacity.
@@ -54,6 +57,8 @@ description: >-
 - `./assets/log-autoscaler-events.sh <cluster-name>`: Live tail of autoscaler decisions.
 - `./assets/find-scale-down-blockers.sh [-n namespace]`: Scan for scale-down blockers (bare pods, local storage, `safe-to-evict` annotations, PDBs, pool minimums, node annotations/constraints).
 - `./assets/capacity-buffer-serving.yaml`: Example CapacityBuffer for serving workloads.
+- `./assets/capacity-quota-examples.yaml`: Example CapacityQuotas (zonal node limit, GPU accelerator limit, machine-family expression group limit).
+
 
 ## Edge Cases & Advanced Troubleshooting
 *   **Stuck/Hanging VMs after Failure:** If node creation fails and the pool is at its `min-nodes` floor, Cluster Autoscaler won't delete unregistered VMs to avoid violating the minimum limit. Fix: Temporarily set `min-nodes` to 0 or delete instances manually in GCE.

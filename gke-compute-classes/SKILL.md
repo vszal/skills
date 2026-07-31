@@ -32,6 +32,20 @@ not block the user's initial request.** If asked for YAML/recommendations:
         (e.g., N4, C4) are generic best-practice examples. You MUST explicitly
         state that the final choice of machine family should be aligned with the
         user's existing Committed Use Discounts (CUDs) or Reservations.
+    *   **CRITICAL CUD EXHAUSTION / CAPACITY QUOTA RULE:** When a user asks how
+        to cap a primary machine family to match a Committed Use Discount (CUD)
+        footprint (e.g., 100-core CUD for N4) and automatically spill over
+        excess workload demand to secondary families (N4D, C4), you MUST
+        recommend a **`CapacityQuota`** (`autoscaling.x-k8s.io/v1beta1`, GKE
+        1.36.2+) targeting `cloud.google.com/compute-class: <NAME>` and
+        `cloud.google.com/machine-family: <PRIMARY_FAMILY>` with a `cpu:
+        <CUD_CORES>` limit. This caps only the primary preferred family without
+        restricting secondary fallback priorities in the `ComputeClass` (`n4d`,
+        `c4`), allowing Cluster Autoscaler to emit `noScaleUp` and automatically
+        spill over excess demand to uncapped fallback families without pods
+        staying in Pending. Do NOT recommend manual node pool limits or GCE
+        Capacity Reservations for this pattern.
+
     *   **YAML REQUIREMENT:** Any generated YAML template MUST include a comment
         near the `machineFamily` field: `# IMPORTANT: Align machineFamily with
         your existing CUDs/Reservations`.
@@ -145,7 +159,16 @@ not block the user's initial request.** If asked for YAML/recommendations:
 
 ## Commonly Missed (cite directly, don't wait to open a reference)
 
+-   **CUD Exhaustion / Scale-Up Cap via CapacityQuota:** To limit a primary
+    machine family (e.g., N4 capped at 100 CPU to match a 100-core CUD) and
+    automatically spill over excess workload demand to fallback families (N4D,
+    C4) in the same ComputeClass without pods getting stuck in Pending, use a
+    **`CapacityQuota`** (`autoscaling.x-k8s.io/v1beta1`, GKE 1.36.2+) targeting
+    `cloud.google.com/compute-class: <NAME>` and
+    `cloud.google.com/machine-family: <PRIMARY_FAMILY>`. Do NOT recommend GCE
+    Capacity Reservations or manual node pool limits for capping core usage.
 -   **Large-shape obtainability:** Machine shapes **>32 vCPU** are scarcer than
+
     smaller ones (thinner capacity pools, more `out.of.resources` stockouts). A
     ComputeClass pinned to large machines **only** risks `Pending`. Add
     **smaller-core fallback priorities** — but only **if the workload allows
@@ -220,7 +243,7 @@ not block the user's initial request.** If asked for YAML/recommendations:
     Karpenter node labels, taints, and disk mappings (e.g., local NVMe) must
     translate to the GKE `nodePoolConfig` (or per-priority overridden fields) in
     the ComputeClass. Ref: `compute-class-karpenter-migration.md`.
--   **Restricting ComputeClass access — TWO independent layers (don't
+-   **Restricting ComputeClass access & usage — THREE independent layers (don't
     conflate):** **(1) CRUD** (who can create/modify the CC *object*) =
     **RBAC**: CC is a **cluster-scoped CRD** →
     `ClusterRole`/`ClusterRoleBinding` (NOT namespaced `Role`), `apiGroups:
@@ -237,9 +260,26 @@ not block the user's initial request.** If asked for YAML/recommendations:
     and `matchConstraints` must cover **every workload kind** (pods +
     deployments/statefulsets/daemonsets/replicasets + jobs/cronjobs), not just
     pods+deployments. Bind with `validationActions: [Deny, Audit]` (Audit-first
-    to find violators), `failurePolicy: Fail`, `namespaceSelector`. Ref:
+    to find violators), `failurePolicy: Fail`, `namespaceSelector`. **(3)
+    Scale-Up Cap (GKE 1.36.2+)** (`CapacityQuota` CRD,
+    `autoscaling.x-k8s.io/v1beta1`) = Restricts the physical infrastructure
+    footprint (CPU, memory, GPUs, node count) that workloads consuming a CC can
+    provision via Cluster Autoscaler. Target a class via `selector.matchLabels:
+    cloud.google.com/compute-class: <NAME>`. **Priority Fallback / CUD
+    Exhaustion Spillover Pattern:** combine `compute-class` with
+    `cloud.google.com/machine-family: <PRIMARY_FAMILY>` in `matchLabels` to cap
+    only the primary preferred family (e.g., `n4` capped at 100 CPU for a
+    100-core Committed Use Discount) without restricting secondary fallback
+    priorities in the class (`n4d`, `c4`). When the primary CUD/quota hits its
+    limit, Cluster Autoscaler emits `noScaleUp` (`exceeded quota:
+    "CapacityQuota/<NAME>", resources: cpu`) and automatically spills over
+    excess demand to the uncapped fallback families. Do not use
+    `node.kubernetes.io/instance-type` in CapacityQuota selectors (use
+    `ComputeClass` `machineType` rules instead). Ref:
     `compute-class-governance.md`; assets `computeclass-rbac-editor.yaml`,
-    `restrict-computeclass-usage-vap.yaml`.
+    `restrict-computeclass-usage-vap.yaml`, `capacity-quota-spillover.yaml`.
+
+
 -   **Autopilot mode on Standard clusters:** Built-in `autopilot` /
     `autopilot-spot` ComputeClasses (pre-installed, GKE 1.33.1-gke.1107000+,
     Rapid channel) run **Autopilot-mode** Pods on a Standard cluster —
@@ -317,7 +357,8 @@ spec:
     `spec.autopilot.enabled`, privileged limits.
 -   **[Governance / Access Restriction](./references/compute-class-governance.md):**
     CRUD via RBAC (`ClusterRole`), consumption via `ValidatingAdmissionPolicy`
-    (nodeSelector/affinity/toleration paths, wildcard bypass).
+    (nodeSelector/affinity/toleration paths, wildcard bypass), and scale-up
+    footprint caps via `CapacityQuota` (with priority fallback spillover).
 
 --------------------------------------------------------------------------------
 
@@ -329,4 +370,6 @@ spec:
     `dynamic-rwo` on GKE 1.35.3-gke.1290000+; for data PVs of stateful
     ComputeClasses).
 -   **Governance:** `assets/computeclass-rbac-editor.yaml` (RBAC CRUD lock),
-    `assets/restrict-computeclass-usage-vap.yaml` (consumption restriction VAP).
+    `assets/restrict-computeclass-usage-vap.yaml` (consumption restriction VAP),
+    `assets/capacity-quota-spillover.yaml` (scale-up cap with fallback spillover).
+

@@ -1,0 +1,47 @@
+# GKE Cluster Autoscaler CapacityQuota Examples
+# Standard templates for granular autoscaling limits (GKE 1.36.2+)
+---
+# Example 1: Restrict autoscaled node count in a specific zone
+apiVersion: autoscaling.x-k8s.io/v1beta1
+kind: CapacityQuota
+metadata:
+  name: zone-node-limit
+spec:
+  selector:
+    matchLabels:
+      topology.kubernetes.io/zone: us-central1-b
+  limits:
+    resources:
+      nodes: 64
+---
+# Example 2: Restrict total GPU count for a specific accelerator type
+apiVersion: autoscaling.x-k8s.io/v1beta1
+kind: CapacityQuota
+metadata:
+  name: t4-gpu-limit
+spec:
+  selector:
+    matchLabels:
+      cloud.google.com/gke-accelerator: nvidia-tesla-t4
+  limits:
+    resources:
+      nvidia.com/gpu: 16
+---
+# Example 3: Restrict CPU and memory across high-performance machine families
+apiVersion: autoscaling.x-k8s.io/v1beta1
+kind: CapacityQuota
+metadata:
+  name: high-perf-family-limit
+spec:
+  selector:
+    matchExpressions:
+      - key: cloud.google.com/machine-family
+        operator: In
+        values:
+          - c2
+          - c3
+          - c3d
+  limits:
+    resources:
+      cpu: 64
+      memory: 128Gi
