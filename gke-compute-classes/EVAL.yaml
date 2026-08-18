@@ -17,7 +17,7 @@ cases:
   expectations:
   - The response provides a YAML example or description of a ComputeClass with Spot priorities at the top.
   - The response includes an On-Demand priority as a lower-priority fallback.
-  - The response mentions that workloads must tolerate the Spot taint or that the ComputeClass handles auto-toleration.
+  - The response does not assert that a manual Spot toleration is required; if it raises tolerations at all, it scopes that requirement to Spot node pools not created by a ComputeClass.
   - The response discusses the trade-off between cost and preemption risk.
 - name: gke_compute_class_troubleshooting
   prompt: My pods are stuck in Pending even though I have a ComputeClass defined. How do I debug why node pool auto-creation isn't creating nodes?
