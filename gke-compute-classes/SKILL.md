@@ -88,13 +88,24 @@ not block the user's initial request.** If asked for YAML/recommendations:
         it. A GPU Pod stuck `Pending` / `noScaleUp` is almost always missing the
         toleration. Add to the PodSpec: `tolerations: [{key: nvidia.com/gpu,
         operator: Exists}]`.
-    *   **CRITICAL SPOT-TAINT RULE:** GKE auto-taints Spot nodes with
-        `cloud.google.com/gke-spot=true:NoSchedule`. Pods targeting a Spot
-        priority tier *must* tolerate this taint, or they will stay `Pending` /
-        `noScaleUp` with a scheduling block. Tell the user to add the matching
-        toleration to their PodSpec: `tolerations: [{key:
-        cloud.google.com/gke-spot, operator: Equal, value: "true", effect:
-        NoSchedule}]`.
+    *   **SPOT-TAINT RULE — SCOPE MATTERS:** GKE taints Spot nodes with
+        `cloud.google.com/gke-spot=true:NoSchedule`, but who tolerates it depends
+        on how the node pool was created.
+        *   **Spot pools NOT created by a ComputeClass** — pools the user made by
+            hand, or pools from cluster-level node auto-provisioning, which is
+            the path the public Spot VMs documentation describes: the toleration
+            is the user's responsibility. Add to the PodSpec: `tolerations:
+            [{key: cloud.google.com/gke-spot, operator: Equal, value: "true",
+            effect: NoSchedule}]`.
+        *   **Spot capacity reached through a ComputeClass priority tier:** do
+            NOT reflexively tell the user to add this. Autopilot adds the Spot
+            toleration for them, and for ComputeClass-auto-created pools on
+            Standard the behavior is not documented either way — reported
+            practice is that no manual toleration is needed. Present it as
+            something to verify on their cluster, not as a requirement, and never
+            diagnose a `Pending` ComputeClass Pod as a missing Spot toleration
+            unless the events actually name that taint. (Contrast the GPU taint
+            above, which genuinely is the user's responsibility in every case.)
     *   **CRITICAL PRIORITYSCORE RULE:** A shared `priorityScore` makes one
         tie-break tier (lowest unit cost wins), but applies to a MAXIMUM of 3
         rules. NEVER emit more than 3 priorities at the same score; if the user
