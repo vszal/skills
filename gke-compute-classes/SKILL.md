@@ -209,26 +209,16 @@ not block the user's initial request.** If asked for YAML/recommendations:
     separate priorities, and don't collapse them into one entry. Needs **no
     `priorityScore`** (GKE 1.35.2+). Asset:
     `balanced-reserved-zonal-compute-class.yaml`.
--   **Stockout cooldown cascade — fallback laddering & stateful isolation:** A
-    hard zonal stockout (`out_of_resources`/`ZONE_RESOURCE_POOL_EXHAUSTED`) on a
-    priority tier trips a ~5-min GLOBAL cooldown on that whole tier; during it,
-    even unconstrained pods cascade to the next obtainable priority across all
-    zones, draining the fleet toward the bottom tier (autoscaler behavior; xref
-    `gke-cluster-autoscaler`). Don't ladder straight from a scarce preferred
-    family to the cheapest fallback — insert an **intermediate family** in
-    `priorities[]` (preferred → mid → floor) so a cooldown drops one rung, not
-    all the way. The forced scale-up that trips the cooldown comes from
-    **constrained** pods (zonal PV / zonal selector), so **isolate
-    stateful/zonal-PV workloads into their own ComputeClass** to keep them from
-    cascading the stateless fleet. (`BALANCED` alone just skews unconstrained
-    scale-up to healthy zones — best-effort, not the cause of the fallback.)
-    **DaemonSet and PDB Consolidation Blockers:** Active migration
-    (`optimizeRulePriority`) is a voluntary disruption that respects PDBs.
-    DaemonSets (which are pinned to every node) and system pods in `kube-system`
-    with tight PDBs (e.g., `maxUnavailable: 0`) often block node evacuation,
-    preventing the consolidation of On-Demand nodes back to Spot even when Spot
-    capacity returns. Note that involuntary Spot preemptions bypass PDBs
-    completely.
+-   **Stockout cooldown cascade — fallback laddering & stateful isolation:**
+    -   *Cooldown Scope*: In current production GKE releases, a hard zonal stockout (`out_of_resources` / `ZONE_RESOURCE_POOL_EXHAUSTED`) on a priority tier trips a ~5-minute **regional** cooldown on that whole tier across all zones. (Upcoming GKE releases refine this to be strictly **zonal**, keeping healthy zones active on preferred tiers; quota errors remain regional).
+    -   *Cascade Mechanism*: Cascades to the bottom tier occur when **zonally constrained workloads** (pods bound to a zonal PV or rigid zonal `nodeSelector`/affinity) demand capacity in a stocked-out zone, forcing evaluation down the fallback ladder.
+    -   *Mitigations*: (1) Insert **intermediate family rungs** in `priorities[]` (e.g., `c4` -> `c3` -> `n4` -> `n2d`) so a cooldown drops one rung rather than cascading straight to the cheapest baseline floor. (2) **Isolate stateful/zonal workloads** into their own dedicated ComputeClass so their forced zonal stockouts do not cascade the stateless fleet. (`BALANCED` location policy alone just skews unconstrained scale-up to healthy zones; xref `gke-cluster-autoscaler`).
+    -   **DaemonSet and PDB Consolidation Blockers:** Active migration (`optimizeRulePriority`) is a voluntary disruption that respects PDBs. DaemonSets (which are pinned to every node) and system pods in `kube-system` with tight PDBs (e.g., `maxUnavailable: 0`) often block node evacuation, preventing the consolidation of On-Demand nodes back to Spot even when Spot capacity returns. Note that involuntary Spot preemptions bypass PDBs completely.
+-   **Fallback Ladder Best Practices (`machineFamily` vs `nodepools` & `flexStart`):**
+    -   *Prefer `machineFamily` over `priorities[].nodepools`*: Rules referencing manual node pools do not benefit from ComputeClass cooldown prolongation and rely solely on standard 5-minute GCE MIG backoffs. Sprawling manual pool lists (>6–8 pools) cause early MIG backoffs to expire before lower rungs are evaluated, bouncing the autoscaler back to the top in an infinite loop. Use `machineFamily` with `nodePoolAutoCreation.enabled: true`.
+    -   *Place `flexStart: true` at the very end*: Dynamic Workload Scheduler (DWS) queuing takes 3–15+ minutes to return stockout signals; placing `flexStart` higher in the ladder allows earlier backoffs to expire during the wait and resets the autoscaler to the top.
+    -   *Avoid `min-nodes` on fallback pools*: `kube-scheduler` fills idle nodes held by `min-nodes` before Cluster Autoscaler evaluates ComputeClass priorities, bypassing preferred tiers. Set `min-nodes: 0` and use `CapacityBuffer`.
+    -   *GKE 1.36+ Synchronous Obtainability*: Starting in GKE 1.36, Cluster Autoscaler checks internal capacity obtainability synchronously in memory before creating VMs, skipping exhausted families without tripping GCE API errors or backoff cooldowns. Note: `gcloud beta compute advice capacity` is a discrete Spot/Flex heuristic (0.1, 0.5, 0.9); Google does not expose public real-time on-demand APIs.
 -   **Stateful PV StorageClass — recommend `dynamic-rwo`:** GKE
     1.35.3-gke.1290000+. Back stateful data PVs with built-in **`dynamic-rwo`**
     (`type: dynamic`, `use-allowed-disk-topology: "true"`,

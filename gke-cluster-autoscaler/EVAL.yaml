@@ -386,5 +386,19 @@ cases:
   - "The response explains how to use selector.matchLabels for zonal limits (topology.kubernetes.io/zone) and GPU limits (cloud.google.com/gke-accelerator)."
   - "The response notes how to observe limits via status.used and status.conditions (valid condition)."
   - "The response mentions that CapacityQuota limits are enforced by the Cluster Autoscaler during scale-up evaluations."
+- name: ca_computeclass_zonal_vs_regional_backoff
+  prompt: "When Cluster Autoscaler encounters a scale-up error on a ComputeClass priority rule, does it back off that priority in all zones or just the failing zone? How does this differ between stockouts and quota errors?"
+  expectations:
+  - "The response explains that in current production GKE releases, a hard stockout (ZONE_RESOURCE_POOL_EXHAUSTED) applies a ~5-minute cooldown across the entire priority tier regionally, whereas upcoming GKE releases refine stockout cooldowns to be strictly zonal (healthy zones remain active)."
+  - "The response explains that quota errors (QUOTA_EXCEEDED) trigger a regional backoff across all zones."
+  - "The response explains that in declarative ComputeClass rules, subsequent stockouts prolong the cooldown for previously failing rungs to push the autoscaler to the first obtainable priority."
+  - "The response notes that the final priority rule in a ComputeClass is never backed off, guaranteeing an active fallback floor."
+- name: ca_computeclass_manual_nodepools_livelock
+  prompt: "Why does Cluster Autoscaler loop endlessly between the first few node pools and fail to reach lower fallback pools when we configure a ComputeClass with 10+ manual node pools under 'priorities[].nodepools'?"
+  expectations:
+  - "The response explains that manual 'priorities[].nodepools' rules do not use ComputeClass cooldown prolongation and rely solely on individual 5-minute GCE MIG backoffs."
+  - "The response explains that when simulating a large number of manual pools and zones, earlier MIG backoffs expire before lower priorities can be evaluated, resetting the autoscaler back to the top."
+  - "The response recommends switching to declarative 'machineFamily' rules with node pool auto-creation or capping manual pools to 6–8 total."
+
 
 
