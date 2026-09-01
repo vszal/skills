@@ -399,6 +399,20 @@ cases:
   - "The response explains that manual 'priorities[].nodepools' rules do not use ComputeClass cooldown prolongation and rely solely on individual 5-minute GCE MIG backoffs."
   - "The response explains that when simulating a large number of manual pools and zones, earlier MIG backoffs expire before lower priorities can be evaluated, resetting the autoscaler back to the top."
   - "The response recommends switching to declarative 'machineFamily' rules with node pool auto-creation or capping manual pools to 6–8 total."
+- name: ca_active_migration_canary_pdb_protection
+  prompt: "We enabled activeMigration on our ComputeClass to optimize node shapes. During our canary deployments, activeMigration repeatedly evicts canary pods to repack nodes, causing deployment failures. Why does this happen and how do we protect canary rollouts without triggering pod restarts?"
+  expectations:
+  - "The response explains that activeMigration performs voluntary evictions via the Kubernetes Eviction API to reconcile workloads back to preferred ComputeClass priorities."
+  - "The response explains that standard operational PDBs allow evictions when minimum replica thresholds are met, leading to rollout churn on warming canary pods."
+  - "The response warns that modifying 'cluster-autoscaler.kubernetes.io/safe-to-evict: false' on the Deployment template changes the PodTemplateSpec hash, forcing an immediate rolling restart of the Deployment."
+  - "The response recommends applying a rollout-scoped PodDisruptionBudget with 'maxUnavailable: 0' matching canary labels during deployment, and patching it to standard operational budgets (e.g., maxUnavailable: 25%) upon completion."
+- name: ca_standby_capacity_buffer_vs_static_min_nodes
+  prompt: "Our serving workload cannot tolerate the 90-second node spin-up delay during traffic spikes. If we use ComputeClasses with Spot preference and On-Demand fallback, why shouldn't we just set min-nodes on our manual On-Demand pool to keep standby capacity?"
+  expectations:
+  - "The response explains that 'kube-scheduler' assigns incoming pods to existing idle nodes maintained by 'min-nodes' before Cluster Autoscaler evaluates ComputeClass priorities."
+  - "The response explains that configuring 'min-nodes' on fallback pools causes incoming pods to schedule directly onto fallback nodes, permanently bypassing preferred Spot priorities."
+  - "The response recommends setting 'min-nodes: 0' on fallback pools and using the 'CapacityBuffer' CRD with low-priority placeholder pods to hold warm headroom without bypassing ComputeClass priorities."
+
 
 
 
