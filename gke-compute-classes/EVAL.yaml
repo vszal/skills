@@ -372,5 +372,25 @@ cases:
   - "The response explains that Google does not expose a public real-time on-demand obtainability API."
   - "The response recommends declaring machine family preference in the ComputeClass priorities list and letting Cluster Autoscaler evaluate obtainability dynamically at provisioning time."
   - "The response mentions that modern GKE (1.36+) integrates synchronous capacity obtainability checking directly into the autoscaler control plane before VM creation."
+- name: gke_compute_class_active_migration_blue_green_pdb_guard
+  prompt: "We have activeMigration enabled on our ComputeClass to optimize node placement. However, during our phased canary/blue-green deployments, activeMigration keeps evicting our new Green pods to move them to preferred nodes while they are warming up, causing deployment timeouts. Can we add 'cluster-autoscaler.kubernetes.io/safe-to-evict: false' to our Deployment template or is there a better way to protect rollouts?"
+  expectations:
+  - "The response explains that adding or removing 'safe-to-evict: false' inside the Deployment spec.template changes the PodTemplateSpec hash, triggering an immediate rolling restart of the Deployment."
+  - "The response recommends applying a dedicated, rollout-scoped PodDisruptionBudget (PDB) with 'maxUnavailable: 0' matching the green workload label (e.g., version: green) during the rollout."
+  - "The response explains that PDBs operate out-of-band on admission control in memory and cause zero pod restarts."
+  - "The response recommends patching or relaxing the PDB to standard operational levels (e.g., maxUnavailable: 25%) once 100% traffic cutover is complete so activeMigration can resume background node optimization."
+- name: gke_compute_class_active_migration_pdb_node_loss_resilience
+  prompt: "If we set 'maxUnavailable: 0' on our Green Deployment's PodDisruptionBudget to block activeMigration evictions, what happens if one of our underlying Spot VMs is preempted or a hardware failure abruptly takes down a node? Will the PDB block pod replacement and leave our application degraded?"
+  expectations:
+  - "The response explains that PDBs only govern voluntary disruptions (such as Active Migration, node consolidation, and node upgrades) and do NOT protect against involuntary disruptions."
+  - "The response explains that Spot preemptions and host failures are involuntary disruptions at the GCE infrastructure layer and completely bypass the Kubernetes Eviction API."
+  - "The response explains that the Kubernetes ReplicaSet controller immediately creates replacement pods via the direct Pod Create API, which is not gated by PDBs, ensuring self-healing."
+- name: gke_compute_class_standby_capacity_buffer_vs_min_nodes
+  prompt: "We want instant scale-up without waiting 2 minutes for node pool auto-creation on our ComputeClasses. Should we set min-nodes on our fallback manual node pools, or is there a better pattern for standby headroom?"
+  expectations:
+  - "The response explains that setting 'min-nodes' on fallback node pools causes 'kube-scheduler' to place incoming pods onto existing idle fallback capacity before Cluster Autoscaler evaluates ComputeClass priorities, permanently bypassing preferred tiers."
+  - "The response recommends reducing 'min-nodes' on fallback pools to 0 and adopting the 'CapacityBuffer' CRD (buffer.x-k8s.io) with balloon placeholder pods."
+  - "The response explains that real workloads preempt low-priority CapacityBuffer placeholder pods instantly (0s startup) while preserving ComputeClass priority evaluation."
 suite_name: gke-compute-classes-eval
+
 
