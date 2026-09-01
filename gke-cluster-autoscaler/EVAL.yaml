@@ -389,7 +389,7 @@ cases:
 - name: ca_computeclass_zonal_vs_regional_backoff
   prompt: "When Cluster Autoscaler encounters a scale-up error on a ComputeClass priority rule, does it back off that priority in all zones or just the failing zone? How does this differ between stockouts and quota errors?"
   expectations:
-  - "The response explains that in current production GKE releases, a hard stockout (ZONE_RESOURCE_POOL_EXHAUSTED) applies a ~5-minute cooldown across the entire priority tier regionally, whereas upcoming GKE releases refine stockout cooldowns to be strictly zonal (healthy zones remain active)."
+  - "The response explains that in earlier GKE releases (< 1.36.3-gke.1244000), a hard stockout (ZONE_RESOURCE_POOL_EXHAUSTED) applies a ~5-minute cooldown across the entire priority tier regionally, whereas starting in GKE 1.36.3-gke.1244000+, stockout cooldowns are strictly zonal (healthy zones remain active)."
   - "The response explains that quota errors (QUOTA_EXCEEDED) trigger a regional backoff across all zones."
   - "The response explains that in declarative ComputeClass rules, subsequent stockouts prolong the cooldown for previously failing rungs to push the autoscaler to the first obtainable priority."
   - "The response notes that the final priority rule in a ComputeClass is never backed off, guaranteeing an active fallback floor."

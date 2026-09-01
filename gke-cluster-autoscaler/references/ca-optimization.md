@@ -53,7 +53,7 @@ spec:
 
 - **Backoff Hierarchy & Scopes**:
   - *ComputeClass Priority Cooldown*: Fixed 5-minute cooldown on declarative rules (`machineFamily`, `machineType`). Reset and prolonged when lower priorities fail subsequently, pushing the autoscaler toward the first obtainable priority without restarting from the top. The final priority rule is never backed off.
-  - *Zonal vs Regional Scope*: In current production GKE releases, a hard stockout puts the whole priority tier on a ~5-minute **regional** cooldown. In upcoming GKE releases, stockouts are scoped **strictly to the failing zone**, while healthy zones remain active on preferred tiers (quota errors remain regional).
+  - *Zonal vs Regional Scope*: In GKE versions prior to `1.36.3-gke.1244000`, a hard stockout puts the whole priority tier on a ~5-minute **regional** cooldown. Starting in GKE `1.36.3-gke.1244000+`, stockouts are scoped **strictly to the failing zone**, while healthy zones remain active on preferred tiers (quota errors remain regional).
   - *Standard MIG Backoff*: Exponential backoff (5m -> 10m -> 20m -> 30m, 3h reset) applied per single zone/MIG on manual node pools and `priorities[].nodepools`.
 - **Manual Node Pools vs Node Pool Auto-Creation**:
   - Manual pools referenced via `priorities[].nodepools` do not benefit from cooldown prolongation. Large lists (>6–8 manual pools) cause early MIG backoffs to expire during simulation, restarting at the top in a loop.
