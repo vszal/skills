@@ -28,7 +28,9 @@ Reconciles pods back to higher-priority rules (e.g. moving from fallback On-Dema
 -   **Voluntary Disruption Contract**: Active Migration calls the Kubernetes Eviction API and strictly respects `PodDisruptionBudgets` (PDBs). Without a PDB, evictions occur as fast as new nodes become ready.
 -   **Blockers to Active Migration**:
     -   Tight PDBs (`maxUnavailable: 0` or `minAvailable: 100%`) block eviction entirely.
-    -   Non-DaemonSet system pods in `kube-system` or un-evictable DaemonSets sharing the node.
+    -   Non-DaemonSet system pods in `kube-system` without PDBs (DaemonSets are stripped via `podutils.FilterRecreatablePods` and do NOT block drain).
+    -   `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` annotation blocks node removal.
+    -   `cluster-autoscaler.kubernetes.io/safe-to-evict: "on-completion"` defers active migration until the pod terminates naturally.
 
 ### Blue-Green & Canary Rollout Protection Against Active Migration Churn
 

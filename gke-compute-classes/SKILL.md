@@ -21,6 +21,9 @@ Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses.
 
 --------------------------------------------------------------------------------
 
+## CRITICAL RULES
+- **CODE-FIRST VERIFICATION (OPEN-SOURCE CODEBASE):** GKE Cluster Autoscaler and ComputeClasses are open-sourced at `https://github.com/GoogleCloudPlatform/cluster-autoscaler`. When user questions challenge or explore undocumented/subtle behaviors, or when guidance is not explicitly established in this skill, **VERIFY BEHAVIOR DIRECTLY IN CODE** (via local repository clone or fetching raw files from GitHub). Check `git log -S` and `git blame` to identify the exact commit and date when behavior changed, and communicate version/date ranges to the user (e.g. *"This behavior changed on July 20, 2026 in upstream commit 129daa3756..."*). See `references/compute-class-code-index.md` for exact package and symbol mappings.
+
 ## Engagement Rules: Generalized First, Refine Later
 
 ComputeClasses depend on zone availability, CUDs, and workload constraints. **Do
@@ -45,7 +48,6 @@ not block the user's initial request.** If asked for YAML/recommendations:
         spill over excess demand to uncapped fallback families without pods
         staying in Pending. Do NOT recommend manual node pool limits or GCE
         Capacity Reservations for this pattern.
-
     *   **YAML REQUIREMENT:** Any generated YAML template MUST include a comment
         near the `machineFamily` field: `# IMPORTANT: Align machineFamily with
         your existing CUDs/Reservations`.
@@ -208,13 +210,13 @@ not block the user's initial request.** If asked for YAML/recommendations:
     entries, each with its own `name` + `zones`). Don't split zones into
     separate priorities, and don't collapse them into one entry. Needs **no
     `priorityScore`** (GKE 1.35.2+). Asset:
-    `balanced-reserved-zonal-compute-class.yaml`.
 -   **Stockout cooldown cascade — fallback laddering & stateful isolation:**
-    -   *Cooldown Scope*: In current production GKE releases, a hard zonal stockout (`out_of_resources` / `ZONE_RESOURCE_POOL_EXHAUSTED`) on a priority tier trips a ~5-minute **regional** cooldown on that whole tier across all zones. (Upcoming GKE releases refine this to be strictly **zonal**, keeping healthy zones active on preferred tiers; quota errors remain regional).
+    -   *Cooldown Scope*: In GKE versions prior to `1.36.3-gke.1244000`, a hard zonal stockout (`out_of_resources` / `ZONE_RESOURCE_POOL_EXHAUSTED`) on a priority tier trips a ~5-minute **regional** cooldown on that whole tier across all zones. Starting in GKE `1.36.3-gke.1244000+`, stockout cooldowns are strictly **zonal**, keeping healthy zones active on preferred tiers (quota errors remain regional).
     -   *Cascade Mechanism*: Cascades to the bottom tier occur when **zonally constrained workloads** (pods bound to a zonal PV or rigid zonal `nodeSelector`/affinity) demand capacity in a stocked-out zone, forcing evaluation down the fallback ladder and tripping the 5-minute cooldown.
     -   *BALANCED Location Policy Clarification*: `locationPolicy: BALANCED` is best-effort and does NOT cause the excessive fallback to lower tiers; for unconstrained pods, a single-zone stockout merely skews scale-up of the preferred tier to healthy zones (e.g. 0/3/3). The true cause of the cascade is the priority tier cooldown triggered by constrained pods.
     -   *Mitigations*: (1) Insert **intermediate family rungs** in `priorities[]` (e.g., `c4` -> `c3` -> `n4` -> `n2d`) so a cooldown drops one rung rather than cascading straight to the cheapest baseline floor. (2) **Isolate stateful/zonal workloads** into their own dedicated ComputeClass so their forced zonal stockouts do not cascade the stateless fleet. (xref `gke-cluster-autoscaler`).
-    -   **DaemonSet and PDB Consolidation Blockers:** Active migration (`optimizeRulePriority`) is a voluntary disruption that respects PDBs. DaemonSets (which are pinned to every node) and system pods in `kube-system` with tight PDBs (e.g., `maxUnavailable: 0`) often block node evacuation, preventing the consolidation of On-Demand nodes back to Spot even when Spot capacity returns. Note that involuntary Spot preemptions bypass PDBs completely.
+    -   **Consolidation & Active Migration Blockers:** Active migration (`optimizeRulePriority`) performs voluntary evictions that strictly respect PDBs. Non-DaemonSet system pods in `kube-system` without PDBs, or application pods with tight PDBs (`maxUnavailable: 0`), block node evacuation and prevent On-Demand fallback nodes from draining back to preferred Spot tiers. Note: DaemonSets are node-bound, stripped via `podutils.FilterRecreatablePods`, and do NOT block node drain/consolidation. Spot VM preemptions occur at the hypervisor level and bypass PDBs completely.
+    -   *Safe-to-Evict on-completion*: Workloads annotated with `cluster-autoscaler.kubernetes.io/safe-to-evict: "on-completion"` defer defragmentation/active migration until the pod finishes naturally.
 -   **Active Migration Rollout Protection — Rollout-Scoped PDBs (`maxUnavailable: 0`):**
     -   *Problem*: When `activeMigration.optimizeRulePriority: true` is enabled, Cluster Autoscaler voluntarily evicts newly scheduled Green pods during canary/blue-green rollouts to optimize node placement, causing rollout thrashing and pipeline timeouts.
     -   *PDBs vs Template Annotations*: Modifying `safe-to-evict: "false"` inside `spec.template.metadata.annotations` changes the `PodTemplateSpec` hash and forces an **immediate rolling restart** of the Deployment. In contrast, managing a dedicated PodDisruptionBudget operates out-of-band with **zero pod restarts**.
