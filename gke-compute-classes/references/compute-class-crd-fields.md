@@ -25,6 +25,11 @@ spec:
 :                                : **Does NOT require   :                      :
 :                                : cluster-level Node   :                      :
 :                                : Auto Provisioning.** :                      :
+| `nodePoolAutoCreation.shieldedInstanceConfig` | Shielded GKE Nodes   | Optional. Toggles    |
+:                                               : settings for auto-   : `enableSecureBoot`   :
+:                                               : created pools.       : and `enableIntegrity-:
+:                                               :                      : Monitoring` (GKE     :
+:                                               :                      : 1.36.3-gke.1244000+).:
 | `nodePoolConfig`               | Defaults for node    | See below.           |
 :                                : pool auto-creation   :                      :
 :                                : pools (image, SA,    :                      :
@@ -90,25 +95,6 @@ Applied to pools created by the autoscaler.
     PVs use a Kubernetes `StorageClass` (recommend the built-in `dynamic-rwo`
     with `use-allowed-disk-topology: "true"` on GKE 1.35.3-gke.1290000+; see
     [provisioning methods](./compute-class-provisioning-methods.md)).
-
-## `nodePoolAutoCreation.shieldedInstanceConfig` (GKE 1.36.3-gke.1244000+)
-
-Configures Shielded GKE Nodes options for auto-created node pools:
-- `enableSecureBoot`: Controls whether Secure Boot is enabled. Verifies digital signatures of boot components.
-  - **Standard mode**: Defaults to `false` unless explicitly set to `true`.
-  - **Autopilot mode**: Defaults to `true` and **cannot be disabled**.
-- `enableIntegrityMonitoring`: Controls whether Integrity Monitoring is enabled via Secure Boot and vTPM measurements.
-  - **Standard mode**: Defaults to `true` unless explicitly set to `false`.
-  - **Autopilot mode**: Defaults to `true` and **cannot be disabled**.
-
-```yaml
-spec:
-  nodePoolAutoCreation:
-    enabled: true
-    shieldedInstanceConfig:
-      enableSecureBoot: true
-      enableIntegrityMonitoring: true
-```
 
 ## Important Schema Constraints
 
