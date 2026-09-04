@@ -62,12 +62,6 @@ not block the user's initial request.** If asked for YAML/recommendations:
         priority for AI/ML Inference, *even if the workload is stateless*.
         Accelerator node startup latency is severe. The correct priority is:
         `Reservations -> On-Demand -> DWS FlexStart -> Spot`.
-        *   **CRITICAL SHIELDED NODES RULE (GKE 1.36.3-gke.1244000+):** To enforce
-        Secure Boot and node Integrity Monitoring on auto-created pools, configure
-        `spec.nodePoolAutoCreation.shieldedInstanceConfig`. Set
-        `enableSecureBoot: true`. Note mode differences: in Standard mode,
-        `enableSecureBoot` defaults to `false` (Integrity Monitoring defaults to
-        `true`); in Autopilot mode, both default to `true` and cannot be disabled.
     *   **CRITICAL PROVISIONING RULE:** Do NOT confuse node pool auto-creation
         with cluster-level Node Auto Provisioning. Starting with GKE
         `1.33.3-gke.1136000`, `nodePoolAutoCreation.enabled: true` in the
