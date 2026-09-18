@@ -1,7 +1,9 @@
 ---
 name: gke-cluster-autoscaler
+metadata:
+  category: Containers
 description: >-
-  Trigger on mention of GKE cluster autoscaler,  node autoscaling, node pool auto-creation / node auto-provisioning. Provides guidance on enabling and optimizing cluster autoscaler, best practices, and troubleshooting issues such as nodes not scaling up or down, zonal stockouts, or capacity buffers. Do not use for ComputeClass-specific YAML generation or priority configuration (defer to gke-compute-classes skill).
+  Trigger on mention of GKE cluster autoscaler, node autoscaling, node pool auto-creation / node auto-provisioning. Provides guidance on enabling and optimizing cluster autoscaler, best practices, and troubleshooting issues such as nodes not scaling up or down, zonal stockouts, or capacity buffers. Do not use for ComputeClass-specific YAML generation or priority configuration (defer to gke-compute-classes skill).
 ---
 
 # GKE Cluster Autoscaler
@@ -15,7 +17,7 @@ description: >-
 - **DAEMONSET MYTH:** DaemonSets are ignored during scale-down and do not block it. Redirect users to real blockers (bare pods, `safe-to-evict: "false"`, local storage, system pods). If system pods block consolidation, suggest segregating them via `kube-system` namespace labeling.
 - **SCALE-DOWN BLOCKERS — ENUMERATE ALL:** When asked why nodes won't scale down (or low-utilization nodes persist), walk the COMPLETE list, never just the symptom named: (1) bare pods (no controller), (2) `safe-to-evict: "false"` annotation, (3) `emptyDir`/local storage without `safe-to-evict: "true"`, (4) PDBs with `disruptionsAllowed: 0`, (5) node pool at `min-nodes` floor, (6) `scale-down-disabled: true` node annotation, (7) scheduling constraints (`kubernetes.io/hostname`). Then run `assets/find-scale-down-blockers.sh`.
 
-**Overlap Warning:** Defer to the `gke-compute-class` skill for ComputeClass YAML generation, schemas, and priority configurations (including fallback configurations). Answer operational autoscaler questions directly, but refer users to `gke-compute-class` when providing/explaining YAML.
+**Overlap Warning:** Defer to the `gke-compute-classes` skill for ComputeClass YAML generation, schemas, and priority configurations (including fallback configurations). Answer operational autoscaler questions directly, but refer users to `gke-compute-classes` when providing/explaining YAML.
 
 ## Provisioning Enablement
 - **Modern GKE (1.33.3+):** Use ComputeClasses (`spec.nodePoolAutoCreation.enabled: true`). Cluster-level Node Auto Provisioning not required.
