@@ -1,8 +1,8 @@
 <!-- disableFinding(LINK_RELATIVE_G3DOC) -->
 
-# ComputeClass: Gotchas, CUDs & Constraints
+# ComputeClass: Gotchas, CUDs & constraints
 
-## Common Traps
+## Common traps
 
 -   **`AnyBestEffort` Reservation:** Consumes On-Demand capacity at the GCE level before evaluating your remaining ComputeClass priorities. Avoid if you want to fall back to Spot or cheaper families; use `AnyThenFail` (GKE 1.36.0-gke.3204000+) or `Specific` affinity.
 -   **Reservations are Zonal:** Pin zones via `reservations.specific[].zones`.
@@ -28,7 +28,7 @@
     -   *Reference:*
         [Asset: postgres-primary-compute-class.yaml](../assets/postgres-primary-compute-class.yaml)
 
-## Provisioning Nuance
+## Provisioning nuance
 
 -   **DWS FlexStart:** Queued (~3 min). `maxRunDurationSeconds` doesn't help
     obtainability.
@@ -36,7 +36,7 @@
     every `gcloud node-pools create` flag. If missing, use a **Manual Pool**
     bound to the ComputeClass.
 
-## CUDs vs. Reservations
+## CUDs vs. reservations
 
 -   **Committed Use Discounts (CUDs):**
     -   **Automatic Consumption:** GKE cluster autoscaler automatically consumes
@@ -54,7 +54,7 @@
         and targeted via the Node Pool API (for manual pools) or within the
         ComputeClass `reservations` block (for node pool auto-creation).
 
-## System Configuration Allowlist
+## System configuration allowlist
 
 GKE allows only specific `sysctls` and `kubeletConfig` fields.
 
@@ -64,7 +64,7 @@ GKE allows only specific `sysctls` and `kubeletConfig` fields.
 -   **Version Gating:** Many fields (e.g. `singleProcessOOMKill`) require 1.33+
     or 1.34+.
 
-## Service Mesh / Networking Nuances
+## Service mesh / networking nuances
 
 -   Nodes provisioned by ComputeClasses (especially via node pool auto-creation)
     must be compatible with existing network policies or service mesh (e.g.,

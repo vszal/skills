@@ -1,6 +1,6 @@
-# ComputeClass: Lifecycle, Drift & Updates
+# ComputeClass: Lifecycle, drift & updates
 
-## Consolidation (Scale-down)
+## Consolidation (scale-down)
 
 Controlled via `spec.autoscalingPolicy`.
 
@@ -19,7 +19,7 @@ Controlled via `spec.autoscalingPolicy`.
     This isolates the system pods and keeps them from blocking the consolidation
     of Spot/workload nodes.
 
-## ActiveMigration (Drift Reconciliation)
+## ActiveMigration (drift reconciliation)
 
 Reconciles pods back to higher-priority rules (e.g. moving from fallback On-Demand back to preferred Spot or C3) when capacity becomes obtainable again.
 
@@ -32,11 +32,11 @@ Reconciles pods back to higher-priority rules (e.g. moving from fallback On-Dema
     -   `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` annotation blocks node removal.
     -   `cluster-autoscaler.kubernetes.io/safe-to-evict: "on-completion"` defers active migration until the pod terminates naturally.
 
-### Blue-Green & Canary Rollout Protection Against Active Migration Churn
+### Blue-green & canary rollout protection against active migration churn
 
 During phased blue-green or canary deployments (e.g., 10% -> 30% -> 60% -> 100% traffic shifts), `activeMigration` can cause severe rollout churn by voluntarily evicting newly scheduled Green pods to optimize node placement while the pods are warming up or receiving test traffic.
 
-#### Why PDBs are Superior to Pod Template Annotations
+#### Why PDBs are superior to pod template annotations
 
 -   **Pod Template Annotations (`safe-to-evict: false`)**: Adding or modifying `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` inside `spec.template.metadata.annotations` mutates the `PodTemplateSpec` hash. This triggers an **immediate rolling restart** of the entire Deployment, causing unwanted downtime.
 -   **Rollout-Scoped PodDisruptionBudgets (`maxUnavailable: 0`)**: Managing a standalone PDB scoped specifically to the Green version (`matchLabels: version: green`) operates completely out-of-band via admission control in memory:
@@ -44,7 +44,7 @@ During phased blue-green or canary deployments (e.g., 10% -> 30% -> 60% -> 100% 
     -   Blocks voluntary `activeMigration` and node consolidation during the release window.
     -   Can be dynamically relaxed to standard production budgets (e.g., `maxUnavailable: 25%`) via `kubectl patch` once cutover reaches 100%.
 
-#### 3-Stage Rollout Lifecycle Pattern
+#### 3-stage rollout lifecycle pattern
 
 1.  **Stage 1: Deploy Green + Guard PDB**
     -   Apply Green rollout PDB with `maxUnavailable: 0` targeting `version: green`.
@@ -57,7 +57,7 @@ During phased blue-green or canary deployments (e.g., 10% -> 30% -> 60% -> 100% 
     -   100% traffic routed to Green; Blue Deployment and Blue PDB decommissioned.
     -   Patch Green PDB to operational budget (`maxUnavailable: 25%`) to re-enable background `activeMigration` node shape optimization.
 
-#### PDB Safety and Edge Cases
+#### PDB safety and edge cases
 
 | Scenario | Behavior Under `maxUnavailable: 0` | Impact / Safety Mechanism |
 |---|---|---|

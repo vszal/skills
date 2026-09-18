@@ -1,8 +1,8 @@
-# ComputeClass: CRD Fields & Spec Reference
+# ComputeClass: CRD fields & spec reference
 
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
-## Minimal Shape
+## Minimal shape
 
 ```yaml
 apiVersion: cloud.google.com/v1
@@ -15,7 +15,7 @@ spec:
     minCores: 16
 ```
 
-## Top-Level Spec Fields
+## Top-level spec fields
 
 | Field                          | Purpose              | Default / Note       |
 | ------------------------------ | -------------------- | -------------------- |
@@ -49,7 +49,7 @@ spec:
 :                                : when priorities      : (Default).           :
 :                                : exhaust.             :                      :
 
-## `nodePoolConfig` (node pool auto-creation Only)
+## `nodePoolConfig` (node pool auto-creation only)
 
 Applied to pools created by the autoscaler.
 
@@ -63,7 +63,7 @@ Applied to pools created by the autoscaler.
 -   `serviceAccount`: Identity for nodes (use custom SA with least privilege,
     not default).
 
-## `priorities[]` Fields
+## `priorities[]` fields
 
 -   `machineFamily` / `machineType`: Intent vs. strict. Prefer family.
 -   `minCores`, `minMemoryGb`: Lower bounds for intent-based matching.
@@ -96,7 +96,7 @@ Applied to pools created by the autoscaler.
     with `use-allowed-disk-topology: "true"` on GKE 1.35.3-gke.1290000+; see
     [provisioning methods](./compute-class-provisioning-methods.md)).
 
-## Important Schema Constraints
+## Important schema constraints
 
 -   **Case Sensitivity**: `imageType` must be lowercase (e.g.,
     `cos_containerd`).

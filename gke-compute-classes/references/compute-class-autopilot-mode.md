@@ -1,4 +1,4 @@
-# Autopilot Mode on Standard Clusters
+# Autopilot mode on Standard clusters
 
 Run **Autopilot-mode** workloads (Google-managed nodes, pod-based billing,
 Autopilot security defaults) on a **Standard** cluster — per-workload, without
