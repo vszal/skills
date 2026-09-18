@@ -1,5 +1,11 @@
 # ComputeClass: Cost optimization & FlexCUDs
 
+## Table of contents
+
+- [Aligning with Committed Use Discounts (CUDs)](#aligning-with-committed-use-discounts-cuds): Lines 9-62
+- [Active migration for cost](#active-migration-for-cost): Lines 63-82
+- [Balanced HA scale-up across zones](#balanced-ha-scale-up-across-zones): Lines 83-118
+
 ## Aligning with Committed Use Discounts (CUDs)
 
 Before selecting machine families for your `priorities[]` list, you **must**
