@@ -136,7 +136,7 @@ Follow this end-to-end recipe (or run `./assets/trace-pod-scaleup.sh <pod-name> 
    ```
    Locate the scale-up decision referencing your pod's controller group and target node pool.
 
-4. **Audit historical ComputeClass status updates in Cloud Audit Logs (CL 983387127):**
+4. **Audit historical ComputeClass status updates in Cloud Audit Logs:**
    ```text
    resource.type="k8s_cluster"
    protoPayload.resourceName:"cloud.google.com/v1/computeclasses/<COMPUTECLASS_NAME>"
@@ -149,7 +149,7 @@ Follow this end-to-end recipe (or run `./assets/trace-pod-scaleup.sh <pod-name> 
    protoPayload.request.metadata.labels."cloud.google.com/compute-class"="<COMPUTECLASS_NAME>"
    ```
 
-5. **Query Cloud Monitoring metrics (`k8s_entity`, CL 941039904):**
+5. **Query Cloud Monitoring metrics (`k8s_entity`):**
    Available on GKE 1.36+, use `resource.labels.entity_type = "ComputeClass"` and `resource.labels.entity_name = "<CCC_NAME>"` (or `""` for non-ComputeClass activity):
    - `kubernetes.io/autoscaler/cluster_pending_pods_per_ccc`: Pending Pods awaiting provisioning (or `UnableToProvision`).
    - `kubernetes.io/autoscaler/cluster_node_provisioning_attempts_count_per_ccc`: Scale-up attempts initiated per ComputeClass.
