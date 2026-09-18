@@ -1,5 +1,14 @@
 # ComputeClass: CRD fields & spec reference
 
+## Table of contents
+
+- [Minimal shape](#minimal-shape): Lines 14-26
+- [Top-level spec fields](#top-level-spec-fields): Lines 27-60
+- [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 61-74
+- [`priorities[]` fields](#priorities-fields): Lines 75-107
+- [Important schema constraints](#important-schema-constraints): Lines 108-120
+- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 121-126
+
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
 ## Minimal shape

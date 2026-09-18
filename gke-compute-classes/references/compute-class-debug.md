@@ -1,5 +1,30 @@
 # GKE ComputeClasses: Debugging and observability
 
+## Table of contents
+
+- [First check: GKE version](#first-check-gke-version): Lines 28-37
+- [ComputeClass status and priority status schema (1.36.4+)](#computeclass-status-and-priority-status-schema-1364): Lines 38-91
+- [Authoritative condition table](#authoritative-condition-table): Lines 92-112
+- [Node annotation contract](#node-annotation-contract): Lines 113-136
+- [Step-by-step recipe: Pod-to-node traceability](#step-by-step-recipe-pod-to-node-traceability): Lines 137-201
+- [Step-by-step recipe: Hard stockout detection](#step-by-step-recipe-hard-stockout-detection): Lines 202-246
+- [Step-by-step recipe: Active migration & config drift rollout stalls](#step-by-step-recipe-active-migration-config-drift-rollout-stalls): Lines 247-260
+- [Step-by-step recipe: Reservation realization & spillover forensics](#step-by-step-recipe-reservation-realization-spillover-forensics): Lines 261-273
+- [Step-by-step recipe: Minimum capacity (`minimumCapacity.targetNodeCount`) & floor protection (1.36.4-gke.1391000+)](#step-by-step-recipe-minimum-capacity-minimumcapacitytargetnodecount-floor-protection-1364-gke1391000): Lines 274-287
+- [Symptom 1: ComputeClass config error](#symptom-1-computeclass-config-error): Lines 288-296
+- [Symptom 2: Scale-up failure (pods pending)](#symptom-2-scale-up-failure-pods-pending): Lines 297-312
+- [Symptom 3: Trapped in pending (GPU tolerations missing)](#symptom-3-trapped-in-pending-gpu-tolerations-missing): Lines 313-327
+- [Symptom 4: Wrong nodes provisioned (E2 fallback trap)](#symptom-4-wrong-nodes-provisioned-e2-fallback-trap): Lines 328-335
+- [Symptom 5: Active migration blocked](#symptom-5-active-migration-blocked): Lines 336-345
+- [Symptom 6: ImageType fragmentation bug (pre-1.33.5)](#symptom-6-imagetype-fragmentation-bug-pre-1335): Lines 346-353
+- [Symptom 7: Pods ignoring ComputeClass](#symptom-7-pods-ignoring-computeclass): Lines 354-359
+- [Symptom 8: "ANY" reservation bypasses fallbacks](#symptom-8-any-reservation-bypasses-fallbacks): Lines 360-366
+- [Symptom 9: Disk/PV attachment fail](#symptom-9-diskpv-attachment-fail): Lines 367-373
+- [Symptom 10: Zonal PV deadlock (pending pods)](#symptom-10-zonal-pv-deadlock-pending-pods): Lines 374-380
+- [Symptom 11: List loops / backoff](#symptom-11-list-loops-backoff): Lines 381-387
+- [Symptom 12: Pods on low-priority nodes](#symptom-12-pods-on-low-priority-nodes): Lines 388-398
+- [Useful commands](#useful-commands): Lines 399-423
+
 ## First check: GKE version
 
 If fields are ignored or fail with "not supported," the control plane is likely too old.

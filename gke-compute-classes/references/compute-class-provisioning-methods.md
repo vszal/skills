@@ -1,5 +1,15 @@
 # ComputeClass: Provisioning methods & binding
 
+## Table of contents
+
+- [node pool auto-creation vs. manual node pools](#node-pool-auto-creation-vs-manual-node-pools): Lines 13-47
+- [Stateful workloads & storage](#stateful-workloads-storage): Lines 48-67
+- [Intent-based vs. strict configuration](#intent-based-vs-strict-configuration): Lines 68-73
+- [Binding manual pools to ComputeClass](#binding-manual-pools-to-computeclass): Lines 74-87
+- [Default class selection](#default-class-selection): Lines 88-96
+- [Integration with Kueue (batch/job queuing)](#integration-with-kueue-batchjob-queuing): Lines 97-119
+- [Standby & headroom patterns: `min-nodes` vs `CapacityBuffer` vs `minimumCapacity`](#standby-headroom-patterns-min-nodes-vs-capacitybuffer-vs-minimumcapacity): Lines 120-151
+
 ## node pool auto-creation vs. manual node pools
 
 | Method          | Description                      | Pinning via `nodepools` |

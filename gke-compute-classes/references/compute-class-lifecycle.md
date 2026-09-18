@@ -1,5 +1,11 @@
 # ComputeClass: Lifecycle, drift & updates
 
+## Table of contents
+
+- [Consolidation (scale-down)](#consolidation-scale-down): Lines 9-27
+- [ActiveMigration (drift reconciliation)](#activemigration-drift-reconciliation): Lines 28-120
+- [Updating a ComputeClass](#updating-a-computeclass): Lines 121-128
+
 ## Consolidation (scale-down)
 
 Controlled via `spec.autoscalingPolicy`.
