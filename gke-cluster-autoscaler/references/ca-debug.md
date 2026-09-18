@@ -34,7 +34,14 @@
 - **Local Storage:** `emptyDir` on local SSD or `hostPath`.
 - **Annotation:** `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`.
 - **PDBs:** Currently allowing zero disruptions.
-- **Floor:** `min-nodes` or `total-min-nodes` > 0.
+- **Floor:** `min-nodes` or `total-min-nodes` > 0, or ComputeClass `minimumCapacity.targetNodeCount` (which injects synthetic `min-nodes-fake-*` floor pods and logs `no.scale.down.node.no.place.to.move.pods` (`min-nodes-fake-0`) in CA Visibility Logs as expected WAI floor protection).
+
+## Cloud Monitoring Metrics per ComputeClass (`k8s_entity`, GKE 1.36.4-gke.1391000+)
+Filter on `resource.type = "k8s_entity"`, `resource.labels.entity_type = "ComputeClass"`, and `resource.labels.entity_name = "<COMPUTECLASS_NAME>"` (`""` for non-ComputeClass activity):
+- `kubernetes.io/autoscaler/cluster_pending_pods_per_ccc`: Gauge of pending pods waiting for node provisioning.
+- `kubernetes.io/autoscaler/cluster_node_provisioning_attempts_count_per_ccc`: Cumulative count of node provisioning attempts.
+- `kubernetes.io/autoscaler/cluster_node_provisioning_failed_attempts_count_per_ccc`: Cumulative count of failed node provisioning attempts grouped by `metric.labels.reason` (`RESOURCE_POOL_EXHAUSTED` [maps to `OutOfResources` in ComputeClass `status.priorityStatuses`], `QUOTA_EXCEEDED`, `IP_SPACE_EXHAUSTED`, `PERMISSIONS_ERROR`, `VM_EXTERNAL_IP_ACCESS_POLICY_CONSTRAINT`, `INVALID_RESERVATION`, `RESERVATION_NOT_FOUND`, `RESERVATION_NOT_READY`, `RESERVATION_CAPACITY_EXCEEDED`, `RESERVATION_INCOMPATIBLE`, `AUTOMATIC_RESERVATIONS_NOT_AVAILABLE`, `AUTOMATIC_RESERVATIONS_NO_CAPACITY`, `UNSUPPORTED_TPU_CONFIGURATION`, `GkePersistentOperationError`, `OTHER`).
+- **Asynchronous Provisioning Rule:** Never subtract `failed_attempts` from `attempts` in real time (attempts and failures occur asynchronously across different minutes); always compare rates over a rolling window (e.g., `rate(10m)`).
 
 ## Performance & Sluggishness
 - **Required Anti-affinity:** Explodes scheduler cost at scale. Use `preferred` or `topologySpreadConstraints`.

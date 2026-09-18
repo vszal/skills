@@ -1,13 +1,13 @@
-# ComputeClass: Prioritization, Logic & Fallbacks
+# ComputeClass: Prioritization, logic & fallbacks
 
-## Traversal & Tie-Breaking
+## Traversal & tie-breaking
 
 -   **Sequential:** Evaluated top-to-bottom. Unobtainable shapes enter a **5-minute cooldown**. Keep priority lists compact (aim for ≤6–8 rungs).
 -   **Tie-break (No Score):** Top entry wins. If multiple shapes match one rule, lowest unit cost wins.
 -   **Tie-break (`priorityScore`):** Int 1–1000 (Higher = Preferred). If one rule has a score, **all** must. Max **3 rules per score**. Tied rules evaluated together; lowest cost wins. (GKE 1.35.2+).
 -   **Equal-Score Zonal Balancing (Round-Robin)**: Since GKE reservations are zonal, to achieve balanced scale-up across multiple zones (e.g., `us-central1-a`, `b`, and `c`), you can define separate priority rules for each zone and assign them the **exact same `priorityScore`**. GKE will evaluate these tied zonal rules together, performing a round-robin selection to achieve roughly equal zonal distribution of nodes. Note that this requires using specific reservation names per zone.
 
-## Cooldown & Fallback Mechanics in Practice
+## Cooldown & fallback mechanics in practice
 
 -   **5-Minute Fixed Cooldown**: When a scale-up fails due to stockout (`scale.up.error.out.of.resources` / `ZONE_RESOURCE_POOL_EXHAUSTED`), Cluster Autoscaler applies a 5-minute cooldown to that priority rule. Unlike standard node pool MIG backoffs, this cooldown is fixed (not exponential).
 -   **Cooldown Prolongation Across Rungs**: When sequential stockouts occur down the priority ladder, each failure resets the 5-minute cooldown timer for all previously failing rungs in that ComputeClass. This pushes Cluster Autoscaler forward toward the first obtainable priority rather than immediately restarting from the top after individual MIG backoffs expire.
@@ -39,7 +39,7 @@
     -   The `gcloud beta compute advice capacity` CLI returns discrete Spot/Flex probability buckets (`0.1`, `0.5`, `0.9`). Google does not expose public real-time on-demand obtainability APIs.
     -   Declare preferred ordering in ComputeClasses; Cluster Autoscaler arbitrates obtainability at runtime.
 
-## Fallback Patterns
+## Fallback patterns
 
 Pattern        | Priority Order           | Rationale                                                                                   | Asset
 -------------- | ------------------------ | ------------------------------------------------------------------------------------------- | -----
@@ -49,7 +49,7 @@ Dev Training   | Spot -> OD               | Spot for cost; OD floor unblocks dev
 Cost Batch     | Spot -> OD               | Use `priorityScore` to pick cheapest Spot family.                                           | `spot-cost-tiebreak-compute-class.yaml`
 Latency Hybrid | Manual -> Auto-creation  | Skip auto-creation delay by hitting warm pools (limit manual pools to ≤6–8).                | `manual-pool-tiebreak-compute-class.yaml`
 
-## Key Rules
+## Key rules
 
 -   **No repetition:** Doesn't improve obtainability.
 -   **Vary dimensions:** Zone, Family, Capacity (Spot/OD), **machine size (cores)**.
