@@ -4,4 +4,5 @@ CLAUDE.md
 .antigravitycli/
 *-workspace/
 *-workspace
-*-lock.json
+*-lock.jsonAGENTS.md
+.agent_resume
