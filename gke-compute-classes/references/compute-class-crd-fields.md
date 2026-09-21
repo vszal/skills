@@ -5,11 +5,11 @@
 - [Minimal shape](#minimal-shape): Lines 16-27
 - [Top-level spec fields](#top-level-spec-fields): Lines 29-61
 - [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 63-75
-- [`priorities[]` fields](#priorities-fields): Lines 77-137
-- [Important schema constraints](#important-schema-constraints): Lines 139-166
-- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 168-193
-- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 195-217
-- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 219-224
+- [`priorities[]` fields](#priorities-fields): Lines 77-138
+- [Important schema constraints](#important-schema-constraints): Lines 140-167
+- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 169-195
+- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 197-219
+- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 221-226
 
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
@@ -88,8 +88,9 @@ Applied to pools created by the autoscaler.
         provisioned and stamped `ccc_priority_index: 2`). Any "% served by rule
         0" reporting is meaningless on a score-ordered class — it can read 0%
         while the class gets its most-preferred shape every time.
-    -   **Why, in source** (`GoogleCloudPlatform/cluster-autoscaler`): the
-        matcher has two methods and they disagree on a scored class.
+    -   **Why, in source** (`GoogleCloudPlatform/cluster-autoscaler`; see
+        [code index](./compute-class-code-index.md)): the matcher has two
+        methods and they disagree on a scored class.
         `matcher.FirstMatchedRule` walks `crd.Rules()` — `priorities[]` in raw
         YAML order, built with no sorting — and returns that **list index**.
         `matcher.FirstMatchedRuleGroup` walks `crd.GroupedRules()`, which groups
@@ -169,7 +170,8 @@ Applied to pools created by the autoscaler.
 
 Undocumented by Google. Behavior below is read from
 `pkg/computeclass/nodeannotator_plugin.go` in
-`GoogleCloudPlatform/cluster-autoscaler` and confirmed on live clusters.
+`GoogleCloudPlatform/cluster-autoscaler` (see
+[code index](./compute-class-code-index.md)) and confirmed on live clusters.
 
 -   **Key is bare `ccc_priority_index`**, with **no `cloud.google.com/`
     prefix** (`CCCPriorityIndexAnnotationKey` in
