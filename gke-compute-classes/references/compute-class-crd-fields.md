@@ -217,6 +217,14 @@ rejects it — not merely that it is undocumented.
     1.31/1.32 a priority-fulfillment dashboard built on this annotation has
     nothing to read — the nodes come up correctly, they are simply never
     stamped.
+-   **That floor is low enough to be a non-issue for most fleets.** 1.33 went
+    GA in 2025 and is at or below the minimum version of every active release
+    channel, so the overwhelming majority of clusters already clear it — this
+    is not a "wait for the next upgrade" feature. When a user asks whether
+    annotation-based priority observability is available to them, the answer is
+    almost always yes; only a fleet deliberately pinned to 1.31/1.32 is
+    excluded. Contrast `priorityScore` (1.35.2+), which genuinely does require
+    a recent upgrade.
 -   On **1.31**, `nodePoolConfig` has **only** `serviceAccount` — not
     `imageType`, `nodeLabels` or `taints`. List order is the only ordering
     mechanism there, so "first rule = most preferred" is unambiguous.
