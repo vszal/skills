@@ -1,9 +1,38 @@
+# Agent / editor scratch
 CLAUDE.md
+AGENTS.md
 .agents/
 .claude/
 .antigravitycli/
+.agent_resume
 *-workspace/
 *-workspace
 *-lock.json
-AGENTS.md
-.agent_resume
+
+# Python build artifacts
+__pycache__/
+*.pyc
+
+# Sync tooling. This lives in its own repo (skills-to-google3) and must never
+# be committed here. It was accidentally committed once and required a history
+# rewrite to remove.
+sync_gke_compute_classes.py
+backup_sync.py
+debug_sync.py
+SYNC.md
+TASK.md
+
+# Accidental nested path. The repo root is already the skills root, so a
+# skills/ subtree here is always a sync bug writing to the wrong root.
+skills/
+
+# Skills maintained outside this repo. gdoc-edit is owned by a separate
+# private repo and must never be mirrored here.
+gdoc-edit/
+
+# Stray duplicates of skill assets. Executable helpers belong in
+# <skill>/assets/ and are referenced as assets/<name>.sh. A copy sitting at
+# the skill root is always an accidental duplicate.
+gke-compute-classes/*.sh
+gke-cluster-autoscaler/*.sh
+gke-storage/*.sh
