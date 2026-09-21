@@ -20,4 +20,3 @@ repo to install.
 | :--- | :--- | :--- |
 | [**GKE ComputeClasses**](./gke-compute-classes) | Priority-based node provisioning and fallback management. | [Google skills repo](https://github.com/google/skills)  |
 | [**GKE Cluster Autoscaler**](./gke-cluster-autoscaler) | Optimization, consolidation tuning, and debugging pending pods. | [Google skills repo](https://github.com/google/skills)  |
-| [**GKE Storage**](./gke-storage) | Guidance on block, shared, and volume management for GKE. | *Experimental* |
