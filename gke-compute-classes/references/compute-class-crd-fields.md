@@ -7,9 +7,9 @@
 - [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 63-75
 - [`priorities[]` fields](#priorities-fields): Lines 77-138
 - [Important schema constraints](#important-schema-constraints): Lines 140-167
-- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 169-195
-- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 197-219
-- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 221-226
+- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 169-197
+- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 199-228
+- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 230-235
 
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
@@ -152,7 +152,7 @@ Applied to pools created by the autoscaler.
     -   `spec.nodePoolConfig.gvnic` — present since **1.34**.
     -   `spec.priorities[].nodeSystemConfig.linuxNodeConfig.transparentHugepageEnabled`
     -   `spec.priorities[].nodeSystemConfig.kubeletConfig.shutdownGracePeriodSeconds`
-        (`nodeSystemConfig` itself does not exist before 1.33.)
+        (`nodeSystemConfig` itself does not exist before 1.32.)
     -   All four are absent on **1.31.14**. Check the cluster in front of you
         rather than trusting any static list:
 
@@ -184,15 +184,17 @@ Undocumented by Google. Behavior below is read from
 -   **Cadence `defaultInterval = 1 * time.Minute`** (`pkg/nodeannotator`),
     matching the 57–62s stamping lag measured on 1.36.4. A missing annotation
     on a node younger than ~1 minute is *pending*, not *absent*.
--   **Sentinel values**, all written to the same key:
-    | Value | Condition |
-    | --- | --- |
-    | `<integer>` | First rule matching the node's MIG; its **list index**. |
-    | `ccc_deleted` | Node carries a compute-class label whose CCC no longer exists. |
-    | `ccc_scale_up_anyway` | No rule matched **and** the class sets `whenUnsatisfiable: ScaleUpAnyway`. |
-    | `ccc_no_rule_matching` | No rule matched and it does not — a real misconfiguration. |
 -   **No annotation at all** is a distinct state: the node has no compute-class
     label, or the cycle errored and will retry, or the cluster is too old.
+
+Sentinel values, all written to that same key:
+
+| Value | Condition |
+| --- | --- |
+| `<integer>` | First rule matching the node's MIG; its **list index**. |
+| `ccc_deleted` | Node carries a compute-class label whose CCC no longer exists. |
+| `ccc_scale_up_anyway` | No rule matched **and** the class sets `whenUnsatisfiable: ScaleUpAnyway`. |
+| `ccc_no_rule_matching` | No rule matched and it does not — a real misconfiguration. |
 
 ## Version floors (measured off live CRD schemas)
 
@@ -201,13 +203,20 @@ rejects it — not merely that it is undocumented.
 
 | | 1.31.14 | 1.32.13 | 1.33.13 | 1.34.10 | 1.36.4 |
 | --- | --- | --- | --- | --- | --- |
-| `ccc_priority_index` stamped | no | see note | **yes** | **yes** | yes |
+| `ccc_priority_index` stamped | no | no | **yes** | yes | yes |
 | `priorityScore` | no | no | no | no | **yes** |
-| `spec.description` | no | — | **yes** | yes | yes |
-| `nodePoolConfig.gvnic` | no | — | no | **yes** | yes |
-| `priorities[].nodeSystemConfig` | no | — | **yes** | yes | yes |
-| `priorities[].location` | no | — | **yes** | yes | yes |
+| `spec.description` | no | no | **yes** | yes | yes |
+| `nodePoolConfig.gvnic` | no | no | no | **yes** | yes |
+| `priorities[].nodeSystemConfig` | no | **yes** | yes | yes | yes |
+| `priorities[].location` | no | no | **yes** | yes | yes |
 
+-   **The `ccc_priority_index` annotation first appears in 1.33.** Bisected on
+    live clusters: absent on 1.31.14-gke.2630000 and 1.32.13-gke.2337000
+    (checked by dumping *every* annotation on the node, not just the expected
+    key), present on 1.33.13-gke.1547000 and every later version tested. On
+    1.31/1.32 a priority-fulfillment dashboard built on this annotation has
+    nothing to read — the nodes come up correctly, they are simply never
+    stamped.
 -   On **1.31**, `nodePoolConfig` has **only** `serviceAccount` — not
     `imageType`, `nodeLabels` or `taints`. List order is the only ordering
     mechanism there, so "first rule = most preferred" is unambiguous.
