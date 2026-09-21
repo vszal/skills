@@ -1,4 +1,10 @@
-# Restricting ComputeClass Access (Governance)
+# Restricting ComputeClass access (governance)
+
+## Table of contents
+
+- [1. CRUD safeguard — RBAC](#1-crud-safeguard-rbac): Lines 28-40
+- [2. Consumption safeguard — ValidatingAdmissionPolicy (VAP)](#2-consumption-safeguard-validatingadmissionpolicy-vap): Lines 41-74
+- [3. Scale-up safeguard — CapacityQuota (GKE 1.36.2+)](#3-scale-up-safeguard-capacityquota-gke-1362): Lines 75-106
 
 Three **independent** layers — each protects something the other can't. Use all
 three for full governance.
@@ -66,7 +72,7 @@ leaving `statefulsets`/`daemonsets`/`replicasets` (apps), `jobs`/`cronjobs`
 Denial surfaces as: `admission webhook ... denied the request: This namespace
 cannot request ComputeClass <NAME> ...`.
 
-## 3. Scale-up Safeguard — CapacityQuota (GKE 1.36.2+)
+## 3. Scale-up safeguard — CapacityQuota (GKE 1.36.2+)
 
 A **CapacityQuota** (`autoscaling.x-k8s.io/v1beta1`) restricts the physical
 infrastructure footprint (CPU, memory, GPUs, node count) that workloads consuming

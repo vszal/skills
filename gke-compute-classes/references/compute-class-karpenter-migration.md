@@ -1,6 +1,6 @@
 # ComputeClass: Migrating from Karpenter
 
-## Concept Mapping
+## Concept mapping
 
 | Karpenter             | GKE ComputeClass            | Note                   |
 | --------------------- | --------------------------- | ---------------------- |
@@ -21,7 +21,7 @@
 | `disruption.budgets`  | **PodDisruptionBudget       | Standard K8s resource. |
 :                       : (PDB)**                     :                        :
 
-## Family Translation (AWS -> GCP)
+## Family translation (AWS -> GCP)
 
 -   **General Purpose:** `m5/m6i` -> `n2 / n4`.
 -   **Compute Optimized:** `c5/c6i` -> `c2 / c4`.
@@ -29,7 +29,7 @@
 -   **ARM:** `c7g/m7g` -> `c4a / n4a`.
 -   **Memory Optimized:** `r5/r6i` -> `n2-highmem / n4-highmem`.
 
-## Key Behavioral Differences
+## Key behavioral differences
 
 -   **Fast-fail Traversal:** ComputeClass falls through to next priority
     immediately on failure. No probabilistic selection.
@@ -45,7 +45,7 @@
 -   **`whenUnsatisfiable`:** Karpenter's "any VM" doesn't match GKE's
     `ScaleUpAnyway` (which picks E2). Use `DoNotScaleUp` and accept `Pending`.
 
-## Sharp Edge: translate Pod selectors to GKE-native labels
+## Sharp edge: Translate pod selectors to GKE-native labels
 
 The #1 post-migration trap. Karpenter/EKS Pod `nodeSelector`/affinity uses
 AWS-style or generic keys that GKE's autoscaler does **not** recognize — the Pod

@@ -1,4 +1,10 @@
-# ComputeClass: Cost Optimization & FlexCUDs
+# ComputeClass: Cost optimization & FlexCUDs
+
+## Table of contents
+
+- [Aligning with Committed Use Discounts (CUDs)](#aligning-with-committed-use-discounts-cuds): Lines 9-62
+- [Active migration for cost](#active-migration-for-cost): Lines 63-82
+- [Balanced HA scale-up across zones](#balanced-ha-scale-up-across-zones): Lines 83-118
 
 ## Aligning with Committed Use Discounts (CUDs)
 
@@ -8,7 +14,7 @@ identify your existing Committed Use Discounts (CUDs) and Reservations.
 **Key Strategy:** The On-Demand "floor" of your ComputeClass should heavily bias
 toward machine families covered by your CUDs (Resource-based or Flexible).
 
-### FlexCUD Coverage
+### FlexCUD coverage
 
 -   **Eligible:** Most general-purpose and compute-optimized families (e.g.,
     `N2`, `N4`, `C3`, `C4`, `E2`, `N2D`).
@@ -21,7 +27,7 @@ toward machine families covered by your CUDs (Resource-based or Flexible).
     -   Preemptible / Spot VMs
     -   Sole-tenant nodes
 
-### Priority List Design
+### Priority list design
 
 When designing the `priorities[]` array for workloads that don't strictly
 require specialized hardware:
@@ -54,7 +60,7 @@ require specialized hardware:
     # Assume N4 is covered by our regional FlexCUD commit
 ```
 
-## Active Migration for Cost
+## Active migration for cost
 
 Enable `activeMigration` to allow GKE to continuously move workloads to more
 cost-effective nodes as capacity becomes available.
@@ -74,7 +80,7 @@ cost-effective nodes as capacity becomes available.
 -   **WARNING:** PDBs and `safe-to-evict` only block *voluntary* scaler actions.
     They **cannot** block *involuntary* Spot VM preemptions.
 
-## Balanced HA Scale-Up Across Zones
+## Balanced HA scale-up across zones
 
 "Balanced" spans **two independent layers** — clarify which the user wants:
 

@@ -1,6 +1,16 @@
-# ComputeClass: Provisioning Methods & Binding
+# ComputeClass: Provisioning methods & binding
 
-## node pool auto-creation vs. Manual Node Pools
+## Table of contents
+
+- [node pool auto-creation vs. manual node pools](#node-pool-auto-creation-vs-manual-node-pools): Lines 13-47
+- [Stateful workloads & storage](#stateful-workloads-storage): Lines 48-67
+- [Intent-based vs. strict configuration](#intent-based-vs-strict-configuration): Lines 68-73
+- [Binding manual pools to ComputeClass](#binding-manual-pools-to-computeclass): Lines 74-87
+- [Default class selection](#default-class-selection): Lines 88-96
+- [Integration with Kueue (batch/job queuing)](#integration-with-kueue-batchjob-queuing): Lines 97-119
+- [Standby & headroom patterns: `min-nodes` vs `CapacityBuffer` vs `minimumCapacity`](#standby-headroom-patterns-min-nodes-vs-capacitybuffer-vs-minimumcapacity): Lines 120-151
+
+## node pool auto-creation vs. manual node pools
 
 | Method          | Description                      | Pinning via `nodepools` |
 | --------------- | -------------------------------- | ----------------------- |
@@ -16,7 +26,7 @@
 2.  On regional clusters, auto-created node pools are regional by default
 3.  No way to set a prefix or custom name for auto-created node pools
 
-### Custom Node Initialization
+### Custom node initialization
 
 ComputeClass node pool auto-creation dynamically manages nodes and **does not
 natively support custom UserData or startup scripts** via the `nodePoolConfig`.
@@ -30,12 +40,12 @@ To initialize nodes:
     (Private preview; contact account team), though DaemonSets are the primary
     K8s-native workaround.
 
-### Hybrid Strategy
+### Hybrid strategy
 
 Put manual pools at the top for zero-latency scheduling; use node pool
 auto-creation fallbacks below for infinite scale.
 
-## Stateful Workloads & Storage
+## Stateful workloads & storage
 
 For Zonal PVs, use `volumeBindingMode: WaitForFirstConsumer` in the
 `StorageClass` to avoid cross-zone deadlocks between disks and autoscaled nodes.
@@ -55,13 +65,13 @@ supported clusters (reference by name; no need to create); asset
 **data-PV StorageClass**, distinct from `priorities[].storage.bootDiskType` (the
 node boot disk).
 
-## Intent-based vs. Strict Configuration
+## Intent-based vs. strict configuration
 
 -   **Intent-based (Preferred):** `machineFamily: n4`, `minCores: 16`. Allows
     GKE to find best-fit shape or substitute families.
 -   **Strict:** `machineType: n4-standard-16`. Pins to exact SKU.
 
-## Binding Manual Pools to ComputeClass
+## Binding manual pools to ComputeClass
 
 Manual pools must be labeled/tainted to be eligible for a ComputeClass (unless
 it's the cluster default).
@@ -75,7 +85,7 @@ gcloud container node-pools update <POOL> \
 When using node pool auto-creation, ComputeClasses auto-tolerate these taints;
 workloads do **not** need matching tolerations.
 
-## Default Class Selection
+## Default class selection
 
 -   **Cluster Default:** Create ComputeClass named `default` + enable feature on
     cluster.
@@ -84,7 +94,7 @@ workloads do **not** need matching tolerations.
 -   **Workload Selection:** `nodeSelector: cloud.google.com/compute-class:
     <name>`.
 
-## Integration with Kueue (Batch/Job Queuing)
+## Integration with Kueue (batch/job queuing)
 
 For AI/ML batch workloads, use **Kueue** to manage quotas and job admission,
 while relying on **ComputeClasses** to handle hardware provisioning (fallback
@@ -106,3 +116,36 @@ spec:
 When Kueue admits the job, it automatically injects this `nodeSelector` into the
 Pod. The GKE Autoscaler will then provision hardware according to the
 ComputeClass's prioritized fallback list.
+
+## Standby & headroom patterns: `min-nodes` vs `CapacityBuffer` vs `minimumCapacity`
+
+| Mechanism | Scope / Type | Interaction with ComputeClass Priorities | Recommendation |
+|---|---|---|---|
+| **Manual `--min-nodes`** | Static floor on individual manual node pool | **Anti-pattern**: `kube-scheduler` assigns incoming pods to idle nodes held by `min-nodes` *before* Cluster Autoscaler evaluates ComputeClass priorities. If configured on fallback pools, workloads permanently schedule on fallback hardware, completely bypassing preferred tiers. | **Avoid on fallback pools**. Set `min-nodes: 0` when using ComputeClasses. |
+| **`CapacityBuffer` CRD (`autoscaling.x-k8s.io`)** | Dynamic or fixed balloon placeholder pods | **Recommended Golden Path**: Uses low/negative `PriorityClass` balloon pods to pre-warm nodes dynamically or by fixed count. Real workloads preempt balloon pods instantly without waiting 60–120s for node auto-creation, while Cluster Autoscaler continues evaluating ComputeClass priority tiers. | **Current Golden Path** for fast startup / bursty serving without priority bypass. |
+| **`spec.minimumCapacity.targetNodeCount`** | Native ComputeClass CRD field (In-tree GKE) | **In-Tree Native Mechanism**: Reconciled directly by Cluster Autoscaler using synthetic in-memory fake pods (`pkg/computeclass/processors/min_capacity_pod_list_processor.go`) against the ComputeClass priority ladder. | Planned native replacement for balloon pods once enabled/released in GKE. |
+
+### Why manual `min-nodes` bypasses ComputeClass fallbacks
+
+```
+Incoming Pod (Selects ComputeClass: Preferred C4 -> Fallback N2)
+       |
+       v
++---------------------------------------------------------+
+| Kubernetes kube-scheduler (Evaluates existing capacity) |
++---------------------------------------------------------+
+       |
+       +---> Are there existing nodes with free capacity?
+             |
+             +--[YES, idle N2 nodes held by min-nodes: 20]---> Pod scheduled on N2 immediately!
+             |                                                (ComputeClass C4 evaluation BYPASSED)
+             |
+             +--[NO, cluster is fully utilized]--------------> Pod stays Pending
+                                                                    |
+                                                                    v
+                                              +--------------------------------------------+
+                                              | Cluster Autoscaler evaluates ComputeClass: |
+                                              | 1. Try C4 (Scale-up)                       |
+                                              | 2. Fall back to N2 only if C4 fails        |
+                                              +--------------------------------------------+
+```

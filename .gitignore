@@ -5,3 +5,5 @@ CLAUDE.md
 *-workspace/
 *-workspace
 *-lock.json
+AGENTS.md
+.agent_resume
