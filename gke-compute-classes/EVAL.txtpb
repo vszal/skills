@@ -1417,4 +1417,67 @@ cases {
     "Visibility Logs are working as intended (WAI) scale-down floor "
     "protection, not a pod eviction bug."
 }
+cases {
+  name: "agent_sandbox_gvisor_warmpool"
+  prompt:
+    "How do I configure a GKE ComputeClass and workloads for GKE Agent "
+    "Sandbox using gVisor container sandboxing with pre-warmed standby pods, "
+    "what admission policies govern the SandboxTemplate, and what template "
+    "can I use?"
+  expectations:
+    "The response specifies configuring 'nodePoolConfig.sandbox.type: gvisor' "
+    "on the ComputeClass."
+  expectations:
+    "The response details using 'SandboxTemplate', 'SandboxWarmPool', and "
+    "'SandboxClaim' from 'extensions.agents.x-k8s.io/v1beta1' for pre-warmed "
+    "sandboxed pod management."
+  expectations:
+    "The response explains that SandboxTemplate requires explicit "
+    "'sandbox.gke.io/runtime: gvisor' nodeSelector and NoSchedule toleration "
+    "to satisfy ValidatingAdmissionPolicy (sandbox-core-policy)."
+  expectations: "The response references 'assets/agent-sandbox-gvisor.yaml'."
+}
+cases {
+  name: "agent_substrate_microvm_nested_virt"
+  prompt:
+    "How do I configure a ComputeClass for running hardware-isolated AI agent "
+    "microVMs with Agent Substrate and nested virtualization, what CEL and "
+    "hardware rules apply, what runtime overhead exists, and what template can "
+    "I use?"
+  expectations:
+    "The response specifies configuring 'nodePoolConfig.sandbox.type: microvm' "
+    "and 'enableNestedVirtualization: true' (such as under 'priorityDefaults') "
+    "on the ComputeClass."
+  expectations:
+    "The response explains that when 'sandbox.type: microvm' is set, CEL "
+    "validation requires non-empty priorities and 'enableNestedVirtualization: "
+    "true' across all auto-created priorities."
+  expectations:
+    "The response identifies hardware compatibility constraints: nested "
+    "virtualization is supported on Intel Haswell+ (c4, n4, c3, n2) and AMD "
+    "n4d, and strictly prohibited on e2, Arm, memory-optimized (m1-m3), or "
+    "bare metal shapes."
+  expectations:
+    "The response references 'assets/agent-substrate-microvm.yaml' and "
+    "mentions microvm podFixed runtime overhead."
+}
+cases {
+  name: "agent_sandbox_compact_hybrid_fallback"
+  prompt:
+    "Why shouldn't I use Spot VMs for interactive AI agent sandboxes in a "
+    "ComputeClass, and what is the recommended fallback ladder?"
+  expectations:
+    "The response explains that Spot VMs should be avoided for interactive "
+    "agent sessions because preemption terminates active sandboxes and drops "
+    "in-memory execution state."
+  expectations:
+    "The response recommends an On-Demand compact hybrid priority ladder "
+    "combining explicit right-sized standard shapes (e.g. standard-8 and "
+    "standard-16) across 4-5 families (c4, n4, c3, n4d, n2)."
+  expectations:
+    "The response explains terminating the priority ladder with a single "
+    "bounded n2 family catch-all floor (machineFamily: n2 with minCores: 8 "
+    "and minMemoryGb: 32) to prune undersized/highcpu variants while "
+    "providing zone elasticity."
+}
 

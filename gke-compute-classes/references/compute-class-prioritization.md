@@ -48,11 +48,14 @@ Prod Training  | Res -> DWS -> OD -> Spot | DWS wait acceptable. Spot preemption
 Dev Training   | Spot -> OD               | Spot for cost; OD floor unblocks dev.                                                       |
 Cost Batch     | Spot -> OD               | Use `priorityScore` to pick cheapest Spot family.                                           | `spot-cost-tiebreak-compute-class.yaml`
 Latency Hybrid | Manual -> Auto-creation  | Skip auto-creation delay by hitting warm pools (limit manual pools to ≤6–8).                | `manual-pool-tiebreak-compute-class.yaml`
+Agent Sandbox  | OD (Compact Hybrid)      | Interactive agent sessions require On-Demand stability. Avoid Spot preemption drops. Pair with warm pool claiming. | `agent-sandbox-gvisor.yaml`
+MicroVM Substrate | OD (Nested Virt Hybrid) | Hardware-isolated microVM execution requiring enableNestedVirtualization: true on modern x86. | `agent-substrate-microvm.yaml`
 
 ## Key rules
 
 -   **No repetition:** Doesn't improve obtainability.
 -   **Vary dimensions:** Zone, Family, Capacity (Spot/OD), **machine size (cores)**.
+-   **Agent sandbox compact hybrid ladders:** Interactive agent sessions require On-Demand stability—Spot preemption mid-turn causes session disconnects and unrecoverable sandbox state. Build compact On-Demand ladders mixing explicit high-obtainability `standard-8` and `standard-16` machine types across 4–5 families (`c4`, `n4`, `c3`, `n4d`, `n2`) with a single bounded `n2` family catch-all floor (`minCores: 8`, `minMemoryGb: 32`). Explicit `machineType` rungs keep candidate shape expansion compact across zones, while the bounded `machineFamily` floor prunes undersized and `highcpu` variants.
 -   **Size obtainability (large shapes are scarce):** Shapes **>32 vCPU** draw from thinner capacity pools and hit `out.of.resources` stockouts far more than ≤32-core shapes. A ComputeClass pinned to large machines **only** has no escape hatch → `Pending`. Add **smaller-core fallback priorities** *if the workload allows it*. **Gate on Pod requests:** node auto-creation sizes nodes to Pod *requests*, so a single pod requesting >32 vCPU **cannot** land on a smaller node — only horizontally-scalable workloads (many small pods that bin-pack) benefit. For a genuinely large single pod, vary **zone/family** instead, not cores.
 -   **Always include a floor:** End with high-availability OD (e.g., N4/E2) to prevent `Pending`.
 -   **Stateful Gen Isolation:** For PV workloads, do NOT mix hardware generations (e.g., all Gen 4 OR all Gen 2) in `priorities[]`. Mixing causes Hyperdisk vs PD attachment failures. **Exception (GKE 1.35.3-gke.1290000+):** with the built-in `dynamic-rwo` StorageClass (`type: dynamic` + `use-allowed-disk-topology: "true"`) the autoscaler scales up only disk-compatible nodes, so it skips the incompatible-generation priority instead of attach-failing — mixing generations is then safe.

@@ -77,3 +77,16 @@ GKE allows only specific `sysctls` and `kubeletConfig` fields.
     require it as label + taint to bind to the ComputeClass.** Note: a
     `nodePoolConfig.taints` key cannot contain the reserved `kubernetes.io`
     substring (GKE Warden rejects it).
+
+## Sandbox, microVM & nested virtualization traps
+
+-   **Nested Virtualization Machine Compatibility:**
+    -   *Supported:* Modern Intel x86 (Haswell+) families (`n4`, `c4`, `c3`, `n2`, `c2`) and AMD `n4d`.
+    -   *Strictly Prohibited & Rejected:* GKE admission rejects nested virtualization on `e2`, Arm (`c4a`, `t2a`), memory-optimized (`m1`, `m2`, `m3`), and bare metal (`-metal`) instances.
+-   **Sandbox Node Selectors: Warden Warning vs. VAP Requirement:**
+    -   *Standard Workloads (Deployments/Pods):* Omit `sandbox.gke.io/runtime` from `nodeSelector`. `runtimeClassName: gvisor|microvm` routes scheduling automatically. Manually specifying `sandbox.gke.io/runtime` in `nodeSelector` produces a GKE Warden warning: *"Key 'sandbox.gke.io/runtime' is not recommended with node selector; Consider using Custom Compute Classes mechanisms"*.
+    -   *GKE Agent Sandbox (`SandboxTemplate`):* GKE's built-in `sandbox-core-policy` ValidatingAdmissionPolicy explicitly **requires** `nodeSelector['sandbox.gke.io/runtime']: gvisor|microvm` along with the matching `NoSchedule` toleration.
+-   **MicroVM Fixed Overhead (`podFixed`):**
+    -   GKE automatically injects fixed infrastructure overhead into microVM pods to cover Cloud Hypervisor VMM and virtiofsd memory usage (`250m` CPU, `130Mi` memory). Factor this overhead into worker resource requests and node capacity planning.
+-   **Agent Sandbox Admission Governance (`sandbox-core-policy` & `sandbox-hardening-policy`):**
+    -   Workloads managed via `SandboxTemplate` must satisfy: `automountServiceAccountToken: false`, `securityContext.runAsNonRoot: true`, `securityContext.capabilities.drop: ["ALL"]`, `allowPrivilegeEscalation: false`, no host namespaces (`hostNetwork`, `hostPID`, `hostIPC`), no hostPath/projected service account tokens, and container memory requests >= 1 GiB per 1 vCPU.

@@ -27,10 +27,32 @@ Controlled via `spec.autoscalingPolicy`.
 
 ## ActiveMigration (drift reconciliation)
 
+Configured under `spec.activeMigration` (`optimizeRulePriority` is marked `required` in the CRD OpenAPI schema when `activeMigration` is specified, with a server-side default of `false`).
+
+### 1. `optimizeRulePriority` (`high-priority-migration` plugin)
+
 Reconciles pods back to higher-priority rules (e.g. moving from fallback On-Demand back to preferred Spot or C3) when capacity becomes obtainable again.
 
--   `optimizeRulePriority: true`: Enables the drift controller.
+-   `optimizeRulePriority: true`: Enables the drift controller (default `false`).
 -   **Drift Reconciliation Loop**: Periodically evaluates running pods against the ComputeClass `priorities[]` ladder. When higher-priority capacity becomes available (e.g. 5-minute stockout cooldown expires or new Spot capacity is energized), the controller provisions preferred nodes and initiates voluntary evictions to pull workloads up the ladder.
+-   **Same-tier fallback churn risk**: If a single priority rule can match multiple machine families/shapes (or when fallback occurs within the same priority group during a partial stockout), `optimizeRulePriority: true` can repeatedly drain and recreate fallback nodes if priority filtering is not satisfied. Disabling `optimizeRulePriority: false` stops priority-migration node churn.
+
+### 2. `ensureAllDaemonSetPodsRunning` (`daemonset` defragmentation plugin)
+
+Drains and replaces existing nodes that have unschedulable DaemonSet pods so that all required DaemonSet pods can run.
+
+-   **Defaults & Mode Scope (`cccCrd.EnsureAllDaemonSetPodsRunning()` & `daemonset.go`)**:
+    -   **Standard ComputeClasses (`spec.autopilot` omitted or `enabled: false`)**: Defaults to **`false`** (`EnsureAllDaemonSetPodsRunning()` returns `false` when `ensureAllDaemonSetPodsRunning` is `nil`). Setting `ensureAllDaemonSetPodsRunning: false` on a Standard ComputeClass that did not explicitly enable it is a **no-op**.
+    -   **Autopilot ComputeClasses on Standard clusters (`spec.autopilot.enabled: true`)**: Defaults to **`true`**, and can be overridden by explicitly setting `ensureAllDaemonSetPodsRunning: false` (alongside required sibling `optimizeRulePriority`).
+    -   **Autopilot clusters (`options.AutopilotEnabled == true`)**: The `daemonset` defragmentation plugin runs unconditionally (`if !p.config.Autopilot` skips `enabledViaCCC`). Setting `ensureAllDaemonSetPodsRunning: false` on a ComputeClass in an Autopilot cluster is **ignored**.
+-   **Trigger & Replacement Mechanism (`unschedulableDSPodsTargetNodes` & `DefragProcessor`)**:
+    -   Inspects DaemonSet-owned pods targeting each node via `metadata.name` `NodeAffinity` where `PodScheduled == False` and `Reason == "Unschedulable"`.
+    -   **Grace period**: `0s` on standard VM families (marks node `NodeUnfit` immediately, up to `MaxCandidateNodeCount = 20` nodes per scan); `3m` (`defaultGracePeriod`) only on resizable VM families (`ek`, `e4`, `e4a`).
+    -   **Scale-down vs. larger node creation**: `DefragProcessor.processCandidatePartial` first runs `simulateNodeRemovals` to check if existing non-DaemonSet pods on the unfit node fit onto other existing cluster nodes. If they fit, Cluster Autoscaler **cordons and deletes the node without creating a replacement node**. A larger node (sized with `--force-ds` DaemonSet reservation) is only provisioned if evicting the workload pods requires a scale-up.
+    -   **Non-resource scheduling conflict churn trap**: Because the plugin does not inspect *why* a DaemonSet pod is `Unschedulable`, non-resource scheduling conflicts—such as a **`hostPort` conflict** between two DaemonSets, an untolerated taint, or a node selector mismatch—still mark nodes `NodeUnfit` and cause continuous node drain/replacement churn until the DaemonSet scheduling conflict is fixed.
+
+### 3. Voluntary disruption contract & blockers
+
 -   **Voluntary Disruption Contract**: Active Migration calls the Kubernetes Eviction API and strictly respects `PodDisruptionBudgets` (PDBs). Without a PDB, evictions occur as fast as new nodes become ready.
 -   **Blockers to Active Migration**:
     -   Tight PDBs (`maxUnavailable: 0` or `minAvailable: 100%`) block eviction entirely.

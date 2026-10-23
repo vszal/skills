@@ -1,0 +1,127 @@
+# EXAMPLE TEMPLATE - DO NOT DEPLOY
+#
+# ComputeClass and Agent Substrate manifests for hardware-isolated microVM execution.
+# Workloads run inside dedicated lightweight virtual machines (Kata Containers +
+# Cloud Hypervisor via /dev/kvm) with nested virtualization enabled on modern x86 nodes.
+apiVersion: cloud.google.com/v1
+kind: ComputeClass
+metadata:
+  name: agent-substrate-microvm
+spec:
+  nodePoolConfig:
+    sandbox:
+      type: microvm
+    nodeLabels:
+      ate.dev/sandbox-runtime: microvm
+  # CRD CEL rule requires enableNestedVirtualization: true on all non-preexisting priorities
+  priorityDefaults:
+    enableNestedVirtualization: true
+  # IMPORTANT: Align machineType / machineFamily with your existing CUDs/Reservations
+  priorities:
+  # Tier 1: 8-core nested-virt compatible shapes
+  - machineType: n4-standard-8
+  - machineType: c4-standard-8
+  - machineType: c3-standard-8
+  - machineType: n4d-standard-8
+  - machineType: n2-standard-8
+  # Tier 2: 16-core shapes for dense microVM consolidation
+  - machineType: n4-standard-16
+  - machineType: c4-standard-16
+  - machineType: c3-standard-16
+  - machineType: n2-standard-16
+  # Tier 3: Bounded family catch-all for broad zone elasticity
+  - machineFamily: n2
+    minCores: 8
+    minMemoryGb: 32
+  activeMigration:
+    optimizeRulePriority: true
+  nodePoolAutoCreation:
+    enabled: true
+  whenUnsatisfiable: DoNotScaleUp
+---
+# Agent Substrate: Namespace, WorkerPool, and ActorTemplate.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ate-system
+---
+apiVersion: ate.dev/v1alpha1
+kind: WorkerPool
+metadata:
+  name: agent-substrate-microvm-pool
+  namespace: ate-system
+spec:
+  replicas: 2
+  workerImage: ko://go.ate.dev/substrate/cmd/ateworker-microvm
+  template:
+    nodeSelector:
+      cloud.google.com/compute-class: agent-substrate-microvm
+      sandbox.gke.io/runtime: microvm
+    tolerations:
+    - key: sandbox.gke.io/runtime
+      operator: Equal
+      value: microvm
+      effect: NoSchedule
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+---
+apiVersion: ate.dev/v1alpha1
+kind: ActorTemplate
+metadata:
+  name: code-interpreter-actor
+  namespace: ate-system
+spec:
+  workerSelector:
+    matchLabels:
+      ate.dev/worker-pool: agent-substrate-microvm-pool
+  containers:
+  - name: interpreter
+    image: us-docker.pkg.dev/google-samples/containers/gke/hello-app:1.0
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+---
+# Standard Deployment targeting microVM runtime via ComputeClass.
+# Note: omit sandbox.gke.io/runtime from nodeSelector to prevent GKE Warden warnings.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-substrate-microvm-worker
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-substrate-microvm-worker
+  template:
+    metadata:
+      labels:
+        app: agent-substrate-microvm-worker
+    spec:
+      runtimeClassName: microvm
+      nodeSelector:
+        cloud.google.com/compute-class: agent-substrate-microvm
+      tolerations:
+      - key: sandbox.gke.io/runtime
+        operator: Equal
+        value: microvm
+        effect: NoSchedule
+      containers:
+      - name: worker
+        image: registry.k8s.io/pause:latest
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi

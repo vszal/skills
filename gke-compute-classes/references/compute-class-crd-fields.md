@@ -2,14 +2,14 @@
 
 ## Table of contents
 
-- [Minimal shape](#minimal-shape): Lines 16-27
-- [Top-level spec fields](#top-level-spec-fields): Lines 29-61
-- [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 63-75
-- [`priorities[]` fields](#priorities-fields): Lines 77-138
-- [Important schema constraints](#important-schema-constraints): Lines 140-167
-- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 169-197
-- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 199-228
-- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 230-235
+- [Minimal shape](#minimal-shape): Lines 16-28
+- [Top-level spec fields](#top-level-spec-fields): Lines 29-63
+- [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 64-78
+- [`priorities[]` fields](#priorities-fields): Lines 79-142
+- [Important schema constraints](#important-schema-constraints): Lines 143-175
+- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 176-205
+- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 206-246
+- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 247-252
 
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
@@ -41,13 +41,14 @@ spec:
 :                                               : created pools.       : and `enableIntegrity-:
 :                                               :                      : Monitoring` (GKE     :
 :                                               :                      : 1.36.3-gke.1244000+).:
-| `nodePoolConfig`               | Defaults for node    | See below.           |
-:                                : pool auto-creation   :                      :
-:                                : pools (image, SA,    :                      :
+| `nodePoolConfig`               | Defaults for node    | See below (image, SA, |
+:                                : pool auto-creation   : labels, taints,      :
+:                                : pools (image, SA,    : sandbox.type).       :
 :                                : labels, taints).     :                      :
 | `priorityDefaults`             | Defaults applied to  | e.g. `zones`,        |
-:                                : all `priorities[]`   : `sysctls`.           :
-:                                : entries.             :                      :
+:                                : all `priorities[]`   : `sysctls`,           :
+:                                : entries.             : `enableNestedVirtua- :
+:                                :                      : lization`.           :
 | `priorities[]`                 | Ordered list of      | Tried top-to-bottom. |
 :                                : provisioning         :                      :
 :                                : attempts.            :                      :
@@ -55,7 +56,19 @@ spec:
 :                                : thresholds and       :                      :
 :                                : delay.               :                      :
 | `activeMigration`              | Drift logic to       | Honors PDBs.         |
-:                                : higher priorities.   :                      :
+:                                : higher priorities    : `optimizeRulePriori- :
+:                                : (`optimizeRulePrior- : ty` (`required` in   :
+:                                : ity`) and node       : schema, default      :
+:                                : replacement for      : `false`);            :
+:                                : unschedulable        : `ensureAllDaemonSet- :
+:                                : DaemonSet pods       : PodsRunning`         :
+:                                : (`ensureAllDaemonSe- : (optional, default   :
+:                                : tPodsRunning`).      : `false` on Standard  :
+:                                :                      : unless `autopilot.e- :
+:                                :                      : nabled: true`;       :
+:                                :                      : always on / ignored  :
+:                                :                      : on Autopilot         :
+:                                :                      : clusters).           :
 | `whenUnsatisfiable`            | Fallback behavior    | `DoNotScaleUp`       |
 :                                : when priorities      : (Default).           :
 :                                : exhaust.             :                      :
@@ -65,6 +78,7 @@ spec:
 Applied to pools created by the autoscaler.
 
 -   `imageType`: `cos_containerd`, `ubuntu_containerd` (must be **lowercase**).
+-   `sandbox.type`: `gvisor` (GKE 1.36.2+) or `microvm` (GKE 1.37.0+). Sets container runtime sandboxing (`runsc`) or hardware-isolated microVMs (`kata-clh` via `/dev/kvm`).
 -   `nodeLabels`: Key-value pairs.
 -   `taints`: List of `{ key, value, effect }`. Valid for an intentional
     dedication taint; keys **cannot contain `kubernetes.io`** (GKE Warden
@@ -77,6 +91,7 @@ Applied to pools created by the autoscaler.
 ## `priorities[]` fields
 
 -   `machineFamily` / `machineType`: Intent vs. strict. Prefer family.
+-   `enableNestedVirtualization`: Boolean (GKE 1.37.0+). Configurable per-priority or globally in `priorityDefaults`. Strictly required by OpenAPI CEL when `sandbox.type: microvm`. Supported on Intel Haswell+ (`n4`, `c4`, `c3`, `n2`, `c2`) and AMD `n4d`; rejected on `e2`, Arm, memory-optimized, or `-metal`.
 -   `priorityScore`: Int 1–1000, **higher = more preferred** (GKE 1.35.2+;
     absent from the CRD on 1.34.10 and earlier). Overrides list position as the
     ordering mechanism. If **any** rule has a score, **all** must. Max **3 rules
@@ -165,6 +180,10 @@ Applied to pools created by the autoscaler.
     -   **Correct**: `bootDiskSize: 50`
     -   **Incorrect**: `bootDiskSize: "50"`
 -   **Storage**: Use `bootDiskSize`, NOT `bootDiskSizeGb`.
+-   **Sandbox & microVM CEL Validation Rules (GKE 1.37.0+)**:
+    -   *Rule 1 (Nested Virtualization Mandatory)*: `ComputeClass with sandbox type 'microvm' requires enableNestedVirtualization to be true for all priorities that are not preexisting nodepools`. Setting `priorityDefaults.enableNestedVirtualization: true` satisfies this requirement cleanly.
+    -   *Rule 2 (Non-Empty Priorities)*: `ComputeClass with sandbox type 'microvm' requires at least one priority to be specified`.
+    -   *Hardware Rejections*: Nested virtualization is strictly rejected by GKE admission on `e2`, Arm (`c4a`, `t2a`), memory-optimized (`m1`–`m3`), and bare metal (`-metal`).
 
 ## `ccc_priority_index` node annotation
 
@@ -201,14 +220,16 @@ Sentinel values, all written to that same key:
 Read from the live CRD on each cluster, so "absent" means the API server
 rejects it — not merely that it is undocumented.
 
-| | 1.31.14 | 1.32.13 | 1.33.13 | 1.34.10 | 1.36.4 |
-| --- | --- | --- | --- | --- | --- |
-| `ccc_priority_index` stamped | no | no | **yes** | yes | yes |
-| `priorityScore` | no | no | no | no | **yes** |
-| `spec.description` | no | no | **yes** | yes | yes |
-| `nodePoolConfig.gvnic` | no | no | no | **yes** | yes |
-| `priorities[].nodeSystemConfig` | no | **yes** | yes | yes | yes |
-| `priorities[].location` | no | no | **yes** | yes | yes |
+| | 1.31.14 | 1.32.13 | 1.33.13 | 1.34.10 | 1.36.4 | 1.37.1 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ccc_priority_index` stamped | no | no | **yes** | yes | yes | yes |
+| `priorityScore` | no | no | no | no | **yes** | yes |
+| `spec.description` | no | no | **yes** | yes | yes | yes |
+| `nodePoolConfig.gvnic` | no | no | no | **yes** | yes | yes |
+| `priorities[].nodeSystemConfig` | no | **yes** | yes | yes | yes | yes |
+| `priorities[].location` | no | no | **yes** | yes | yes | yes |
+| `nodePoolConfig.sandbox.type` (gvisor) | no | no | no | no | **yes** | yes |
+| `sandbox.type` (microvm) & nested-virt | no | no | no | no | no | **yes** |
 
 -   **The `ccc_priority_index` annotation first appears in 1.33.** Bisected on
     live clusters: absent on 1.31.14-gke.2630000 and 1.32.13-gke.2337000

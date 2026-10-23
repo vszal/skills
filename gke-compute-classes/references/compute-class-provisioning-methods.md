@@ -8,7 +8,7 @@
 - [Binding manual pools to ComputeClass](#binding-manual-pools-to-computeclass): Lines 74-87
 - [Default class selection](#default-class-selection): Lines 88-96
 - [Integration with Kueue (batch/job queuing)](#integration-with-kueue-batchjob-queuing): Lines 97-119
-- [Standby & headroom patterns: `min-nodes` vs `CapacityBuffer` vs `minimumCapacity`](#standby-headroom-patterns-min-nodes-vs-capacitybuffer-vs-minimumcapacity): Lines 120-151
+- [Standby & headroom patterns: `min-nodes` vs `CapacityBuffer` vs `minimumCapacity`](#standby-headroom-patterns-min-nodes-vs-capacitybuffer-vs-minimumcapacity): Lines 120-153
 
 ## node pool auto-creation vs. manual node pools
 
@@ -124,6 +124,8 @@ ComputeClass's prioritized fallback list.
 | **Manual `--min-nodes`** | Static floor on individual manual node pool | **Anti-pattern**: `kube-scheduler` assigns incoming pods to idle nodes held by `min-nodes` *before* Cluster Autoscaler evaluates ComputeClass priorities. If configured on fallback pools, workloads permanently schedule on fallback hardware, completely bypassing preferred tiers. | **Avoid on fallback pools**. Set `min-nodes: 0` when using ComputeClasses. |
 | **`CapacityBuffer` CRD (`autoscaling.x-k8s.io`)** | Dynamic or fixed balloon placeholder pods | **Recommended Golden Path**: Uses low/negative `PriorityClass` balloon pods to pre-warm nodes dynamically or by fixed count. Real workloads preempt balloon pods instantly without waiting 60–120s for node auto-creation, while Cluster Autoscaler continues evaluating ComputeClass priority tiers. | **Current Golden Path** for fast startup / bursty serving without priority bypass. |
 | **`spec.minimumCapacity.targetNodeCount`** | Native ComputeClass CRD field (In-tree GKE) | **In-Tree Native Mechanism**: Reconciled directly by Cluster Autoscaler using synthetic in-memory fake pods (`pkg/computeclass/processors/min_capacity_pod_list_processor.go`) against the ComputeClass priority ladder. | Planned native replacement for balloon pods once enabled/released in GKE. |
+| **`SandboxWarmPool` (`extensions.agents.x-k8s.io`)** | Workload-layer pre-warmed pod pool | **Agent Sandbox Headroom**: Pre-provisions ready gVisor sandboxed Pods via `SandboxTemplate` and holds them warm. When a user requests an agent session, `SandboxClaim` binds to an existing warm pod in <1s, while the WarmPool controller scales up replenishments via ComputeClass. | **Recommended for GKE Agent Sandbox** interactive sessions to avoid both VM boot (60–120s) and container startup latency. |
+| **`WorkerPool` (`ate.dev/v1alpha1`)** | Workload-layer microVM worker pool | **Agent Substrate Headroom**: Pre-allocates worker Pods hosting microVM instances (Kata Containers / Cloud Hypervisor). Must account for RuntimeClass `podFixed` overhead (250m CPU, 130Mi memory). Workloads claim warm microVMs instantly without triggering on-demand VM creation. | **Recommended for Agent Substrate** hardware-isolated microVM sessions. Pair with nested virt ComputeClass. |
 
 ### Why manual `min-nodes` bypasses ComputeClass fallbacks
 

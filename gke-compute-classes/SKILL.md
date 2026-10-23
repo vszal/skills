@@ -1,7 +1,7 @@
 ---
 name: gke-compute-classes
 description: >-
-  Configures, optimizes, and troubleshoots GKE ComputeClasses. Use when configuring Spot VMs with on-demand fallback, targeting specific accelerators (GPUs/TPUs) or machine families, restricting ComputeClass access, or debugging pending pods related to node pool auto-creation. Do not use for cluster-level Node Auto Provisioning configuration or general GKE cluster creation.
+  Configures, optimizes, and troubleshoots GKE ComputeClasses. Use when configuring Spot VMs with on-demand fallback, targeting specific accelerators (GPUs/TPUs) or machine families, configuring sandboxed AI agents (gVisor, microVMs, nested virtualization), restricting ComputeClass access, or debugging pending pods related to node pool auto-creation. Do not use for cluster-level Node Auto Provisioning configuration or general GKE cluster creation.
 metadata:
   category: Containers
 ---
@@ -18,6 +18,7 @@ Guidance on configuring, optimizing, and troubleshooting GKE ComputeClasses.
 -   **GPU/TPU workloads:** Target specific accelerators (e.g., L4, H100, v5p).
 -   **Performance tuning:** Select specific machine families (c3, c4, n4).
 -   **Zone targeting:** Colocate workloads with zonal resources.
+-   **Sandboxed AI agents & microVMs:** Container sandboxing (gVisor) and hardware-isolated microVMs with nested virtualization (GKE Agent Sandbox, Agent Substrate).
 
 --------------------------------------------------------------------------------
 
@@ -148,6 +149,13 @@ not block the user's initial request.** If asked for YAML/recommendations:
         material). Explain the trade-off, then redirect to real boot-latency
         levers: image type, boot-disk type, pre-warmed/manual pools,
         reservations.
+    *   **CRITICAL SANDBOX & MICROVM RULE:**
+        *   **CRD Fields & Floors:** `nodePoolConfig.sandbox.type: gvisor` (GKE `1.36.2-gke.1368000+`) or `microvm` (GKE `1.37.0-gke.4713000+`).
+        *   **OpenAPI CEL Rule for microVM:** When `sandbox.type: microvm`, CRD admission strictly requires (1) non-empty `priorities[]` and (2) `enableNestedVirtualization: true` across all priorities that do not reference pre-existing `nodepools`. Setting `priorityDefaults.enableNestedVirtualization: true` satisfies this requirement cleanly.
+        *   **Nested Virtualization Hardware Compatibility:** Nested virt is supported ONLY on Intel Haswell+ (`n4`, `c4`, `c3`, `n2`, `c2`) and AMD `n4d`. NEVER include `e2`, Arm (`c4a`, `t2a`), memory-optimized (`m1`–`m3`), or bare metal (`-metal`) in a `microvm` class (rejected by GKE admission).
+        *   **Runtime Overhead:** Always account for `microvm` `podFixed` runtime overhead (`250m` CPU, `130Mi` memory) when sizing microVM worker requests and limits.
+        *   **On-Demand Priority Laddering for Agents:** For stateful/interactive agent sessions, use On-Demand (not Spot) to prevent mid-session hypervisor preemptions. Use a compact hybrid ladder: right-sized standard shapes across 4–5 families (Tier 1: 8-core `c4`, `n4`, `c3`, `n4d`, `n2`; Tier 2: 16-core `c4`, `n4`, `c3`, `n2`) ending in a single bounded `machineFamily: n2` catch-all (`minCores: 8`, `minMemoryGb: 32`) to prune undersized/highcpu shapes while providing zone elasticity.
+        *   **Templates & Assets:** Always cite the template asset file path explicitly in the final response (`Reference: assets/agent-sandbox-gvisor.yaml` for gVisor / GKE Agent Sandbox `SandboxTemplate`/`SandboxWarmPool`/`SandboxClaim`, or `Reference: assets/agent-substrate-microvm.yaml` for microVM / nested virtualization / Agent Substrate `WorkerPool`/`ActorTemplate`), even when embedding the full YAML.
 2.  **Append Follow-Up Questions:** State that more context enables specific,
     cost-effective, reliable recommendations. Pin down missing context
     (Priority: CUDs first):
@@ -313,6 +321,9 @@ not block the user's initial request.** If asked for YAML/recommendations:
     component. The autoscaler might take up to an hour to successfully
     initialize and install the CRD. Instruct users to verify CRD existence using
     `kubectl get crd computeclasses.cloud.google.com` before deploying.
+-   **Sandboxed AI Agents — GKE Agent Sandbox (`gvisor`) vs. Agent Substrate (`microvm`):**
+    -   *GKE Agent Sandbox (`extensions.agents.x-k8s.io/v1beta1`, GKE `1.36.3-gke.1767000+`, `--enable-agent-sandbox`)*: Declarative container sandboxing using `SandboxTemplate` + `SandboxWarmPool` (`replicas: N`) + `SandboxClaim`. Enforces `sandbox-core-policy` & `sandbox-hardening-policy` VAPs: strictly requires `runtimeClassName: gvisor|microvm`, `automountServiceAccountToken: false`, `securityContext.runAsNonRoot: true`, `capabilities.drop: ["ALL"]`, `allowPrivilegeEscalation: false`, no host namespaces/privileged/hostPath, >=1 GiB RAM per 1 vCPU, AND explicit `nodeSelector['sandbox.gke.io/runtime']: gvisor|microvm` + `NoSchedule` toleration alongside `cloud.google.com/compute-class: <NAME>`. (Contrast: on standard `Deployment`/`Pod` manifests outside `SandboxTemplate`, omit `sandbox.gke.io/runtime` from `nodeSelector` because `runtimeClassName` injects it automatically and GKE Warden warns against manual `sandbox.gke.io/runtime` nodeSelector). Asset: `assets/agent-sandbox-gvisor.yaml`.
+    -   *Agent Substrate (`ate.dev/v1alpha1`, GKE Standard 1.37+)*: Sub-500ms memory snapshot/restore via `WorkerPool` + `ActorTemplate`. For hardware-isolated microVMs (`kata-clh` / Cloud Hypervisor via `/dev/kvm`), pair with a `sandbox.type: microvm` + `priorityDefaults.enableNestedVirtualization: true` ComputeClass and account for `microvm` `podFixed` overhead (`250m` CPU, `130Mi` memory) when sizing worker requests/limits. Asset: `assets/agent-substrate-microvm.yaml`.
 -   **Observability & Diagnostics (GKE `1.36.4-gke.1391000+`):**
     *   **`status.priorityStatuses[]` & Runtime Conditions:** In GKE `1.36.4-gke.1391000+`, GKE populates per-priority status under `status.priorityStatuses[]` with `identifier` (`"0"`, `"1"`, `"2"` matching 0-based `spec.priorities[]`, plus synthetic `"ScaleUpAnyway"` when `whenUnsatisfiable: ScaleUpAnyway` is set), `configHash` (SHA-256 rule fingerprint), `resourceInfo` (`cpu`, `memory`, `nvidia.com/gpu`, `google.com/tpu` with `currentCount`, `targetCount`, `currentUtilizationPercentage`), and `scalingEventsHistory` (`provisionedNodesCount`, `consolidatedNodesCount`, `migratedNodesCount`).
         *   **Soft Stockout (`ProvisioningConstrained`):** Zonal/partial failure (`NodeProvisioning of the node pools associated with this priority failed due to the OutOfResources error. In backoff until YYYY-MM-DD HH:MM:SS UTC.`). Healthy zones remain active on this priority tier. Always mention running `assets/monitor-hard-stockouts.sh` to scan stockout conditions.
@@ -401,13 +412,19 @@ spec:
     expected `no.scale.down.node.no.place.to.move.pods` (`min-nodes-fake-*`) WAI
     scale-down floor logs).
 -   **Logs:** `assets/log-autoscaler-events.sh`.
--   **Examples:** `assets/*.yaml` (Always ask for region/zone before copying).
+-   **Example templates:**
+    -   AI/ML Serving & Batch: `assets/genai-inference-g4-compute-class.yaml`, `assets/tpu-v5e-training-compute-class.yaml`, `assets/shared-l4-inference-compute-class.yaml`.
+    -   Stateful & Database: `assets/postgres-primary-compute-class.yaml`, `assets/redis-compute-class.yaml`, `assets/kafka-broker-compute-class.yaml`.
+    -   Priority & Fallback Patterns: `assets/spot-cost-tiebreak-compute-class.yaml`, `assets/equal-priority-tiebreak-compute-class.yaml`, `assets/balanced-reserved-zonal-compute-class.yaml`, `assets/manual-pool-tiebreak-compute-class.yaml`, `assets/spark-proximal-compute-class.yaml`, `assets/system-pool-compute-class.yaml`.
 -   **Stateful StorageClass:** `assets/dynamic-rwo-storageclass.yaml` (built-in
     `dynamic-rwo` on GKE 1.35.3-gke.1290000+; for data PVs of stateful
     ComputeClasses).
 -   **Governance:** `assets/computeclass-rbac-editor.yaml` (RBAC CRUD lock),
     `assets/restrict-computeclass-usage-vap.yaml` (consumption restriction VAP),
     `assets/capacity-quota-spillover.yaml` (scale-up cap with fallback spillover).
+-   **Agent Sandboxes (gVisor & microVM):** `assets/agent-sandbox-gvisor.yaml`
+    (gVisor + warm pool claiming), `assets/agent-substrate-microvm.yaml`
+    (microVM + nested virtualization + Agent Substrate).
 
 
 
