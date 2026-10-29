@@ -3,13 +3,13 @@
 ## Table of contents
 
 - [Minimal shape](#minimal-shape): Lines 16-28
-- [Top-level spec fields](#top-level-spec-fields): Lines 29-63
-- [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 64-78
-- [`priorities[]` fields](#priorities-fields): Lines 79-142
-- [Important schema constraints](#important-schema-constraints): Lines 143-175
-- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 176-205
-- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 206-246
-- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 247-252
+- [Top-level spec fields](#top-level-spec-fields): Lines 29-75
+- [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 76-90
+- [`priorities[]` fields](#priorities-fields): Lines 91-156
+- [Important schema constraints](#important-schema-constraints): Lines 157-189
+- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 190-219
+- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 220-260
+- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 261-266
 
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
@@ -138,6 +138,8 @@ Applied to pools created by the autoscaler.
 -   `flexStart`: `{ enabled: true }` for DWS queued provisioning.
 -   `gpu` / `tpu`: Accelerator requests (count, type, topology).
 -   `nodepools`: (Standard Only) List of manual pool names to target.
+-   `nodeLabels`: Per-priority key-value node labels (can also be set in `priorityDefaults` or `nodePoolConfig`). Note: sub-selecting priority rules via custom `nodeSelector` labels works when `activeMigration.optimizeRulePriority: false`, but causes continuous eviction churn when `optimizeRulePriority: true` (see [lifecycle](./compute-class-lifecycle.md)).
+-   `taints`: Per-priority list of `{ key, value, effect }` taints (can also be set in `priorityDefaults` or `nodePoolConfig`).
 -   `nodeSystemConfig`:
     -   `linuxNodeConfig`: `sysctls` (e.g., `net.ipv4.tcp_tw_reuse: true`,
         `net.core.somaxconn: 4096`). **Never quote integer or boolean values.**

@@ -23,7 +23,8 @@
 - [Symptom 10: Zonal PV deadlock (pending pods)](#symptom-10-zonal-pv-deadlock-pending-pods): Lines 374-380
 - [Symptom 11: List loops / backoff](#symptom-11-list-loops-backoff): Lines 381-387
 - [Symptom 12: Pods on low-priority nodes](#symptom-12-pods-on-low-priority-nodes): Lines 388-398
-- [Useful commands](#useful-commands): Lines 399-423
+- [Symptom 13: Active migration thrash / continuous pod evictions (custom label sub-selection or stockout churn)](#symptom-13-active-migration-thrash--continuous-pod-evictions-custom-label-sub-selection-or-stockout-churn): Lines 400-422
+- [Useful commands](#useful-commands): Lines 423-447
 
 ## First check: GKE version
 
@@ -393,6 +394,30 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
   1. **ActiveMigration:** Set `optimizeRulePriority: true` to eventually move workloads to higher-priority nodes.
   2. **PriorityClass:** Use native K8s PriorityClass for pod-level preemption.
   3. **Kueue:** Use Kueue for complex batch/AI/ML fair-sharing and queueing.
+
+---
+
+## Symptom 13: Active migration thrash / continuous pod evictions (custom label sub-selection or stockout churn)
+
+- **Symptom:** Nodes are repeatedly cordoned (`autoscaling.gke.io/defrag-candidate`), and pods experience voluntary evictions every ~5 minutes or get evicted laterally between nodes of the same priority without converging.
+- **Root Cause 1 (Monolithic ComputeClass custom-label sub-selection combined with `activeMigration`):**
+  - A single ComputeClass defines multiple priorities (e.g., Priority 0 = General Spot, Priority 1 = HighMem On-Demand). Workloads use custom `nodeSelector` labels (e.g. `workload: solr` via `priorities[].nodeLabels` or manual node pool labels) to target Priority 1+. (Note: while this pattern works for scale-up when `optimizeRulePriority: false`, it causes continuous eviction churn whenever `optimizeRulePriority: true` is enabled.)
+  - CA's priority drift evaluation (`high_priority_migration.go:102-112`) treats **only index 0 as optimal** (`(!priorityGroupFound || priorityGroupIndex > 0)`). Any node annotated with `ccc_priority_index > 0` is permanently treated as a defragmentation candidate.
+  - When simulating pod eviction (`simulation.go:88-98`), CA inspects `destinationMap` and finds other existing nodes matching the pod's selectors. Instead of migrating pods to Priority 0 (which lacks the custom label), CA evicts pods **laterally or downward** into existing headroom, repeating continuously.
+- **Root Cause 2 (Stockout backoff loop in CreateBeforeDelete mode):**
+  - `optimizeRulePriority: true` with manual node pools (`nodePoolAutoCreation.enabled: false`).
+  - High-priority capacity (e.g., Spot) hits a GCE zonal stockout (`ZONE_RESOURCE_POOL_EXHAUSTED` / `scale.up.error.out.of.resources`), entering a 5-minute cooldown (`ProvisioningSuspended`).
+  - Every 5 minutes, when the backoff expires, `optimizeRulePriority` wakes up, cordons fallback nodes, and attempts scale-up. In `CreateBeforeDelete` mode (`defrag.go:53-55`), CA evicts candidate pods into whatever headroom exists across other cluster nodes before stockout failure recurs ([Public Issue 445891977](https://issuetracker.google.com/issues/445891977)).
+- **Fixes:**
+  1. **Architectural split into dedicated ComputeClasses:** Never use custom labels to steer workloads between priority tiers inside a single ComputeClass. Create separate, dedicated ComputeClasses per workload profile (e.g., `solr-computeclass` and `general-computeclass`). Place each workload's primary machine shape and lifecycle at **Priority 0** (`ccc_priority_index: "0"`).
+  2. **Disable `optimizeRulePriority` during sustained stockouts / peak events:**
+     ```yaml
+     spec:
+       activeMigration:
+         optimizeRulePriority: false
+     ```
+     This immediately halts voluntary defragmentation candidate evaluation.
+  3. **Order Reservations above Spot:** Place Reserved On-Demand rules at Priority 0 and Spot at Priority 1+ so workloads do not thrash off paid-for reservations into Spot.
 
 ---
 

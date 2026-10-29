@@ -3,8 +3,8 @@
 ## Table of contents
 
 - [Consolidation (scale-down)](#consolidation-scale-down): Lines 9-27
-- [ActiveMigration (drift reconciliation)](#activemigration-drift-reconciliation): Lines 28-120
-- [Updating a ComputeClass](#updating-a-computeclass): Lines 121-128
+- [ActiveMigration (drift reconciliation)](#activemigration-drift-reconciliation): Lines 28-180
+- [Updating a ComputeClass](#updating-a-computeclass): Lines 181-188
 
 ## Consolidation (scale-down)
 
@@ -36,6 +36,44 @@ Reconciles pods back to higher-priority rules (e.g. moving from fallback On-Dema
 -   `optimizeRulePriority: true`: Enables the drift controller (default `false`).
 -   **Drift Reconciliation Loop**: Periodically evaluates running pods against the ComputeClass `priorities[]` ladder. When higher-priority capacity becomes available (e.g. 5-minute stockout cooldown expires or new Spot capacity is energized), the controller provisions preferred nodes and initiates voluntary evictions to pull workloads up the ladder.
 -   **Same-tier fallback churn risk**: If a single priority rule can match multiple machine families/shapes (or when fallback occurs within the same priority group during a partial stockout), `optimizeRulePriority: true` can repeatedly drain and recreate fallback nodes if priority filtering is not satisfied. Disabling `optimizeRulePriority: false` stops priority-migration node churn.
+
+#### Candidate selection mechanics & index 0 optimality (`high_priority_migration.go:102-112`)
+
+The `high-priority-migration` defragmentation plugin evaluates every node in the cluster against the ComputeClass `priorities[]` array:
+-   **Index 0 is the only optimal state**: In `high_priority_migration.go:105`, the controller checks:
+    ```go
+    if !priorityGroupFound || priorityGroupIndex > 0 {
+        // Node is considered sub-optimal; mark as migration candidate
+    }
+    ```
+    Any node whose `ccc_priority_index` annotation is greater than `"0"` (or that lacks the annotation) is categorized as a candidate for defragmentation. The controller attempts to migrate pods off this node and onto a Priority 0 node.
+-   **Unannotated and manual nodes**: When manual node pools are used without explicit `ccc_priority_index: "0"` metadata matching, CA evaluates them as index > 0 candidates, continuously queuing them for active migration.
+
+#### CreateBeforeDelete mode & existing-headroom drain (`defrag.go:53-55`, `simulation.go:88-98`)
+
+Under default active migration behavior:
+-   **`CreateBeforeDelete` intent (`high_priority_migration.go:128`)**: Active migration uses `CreateBeforeDelete` (`defrag.Partial`) mode to avoid dropping cluster capacity before replacement nodes are ready.
+-   **Simulation into existing headroom (`processor.go:346-368`, `simulation.go:88-98`)**: Before simulating scale-up of a higher-priority node group, `processCandidatePartial` runs `simulateNodeRemovals`, which populates `destinationMap` with **any existing non-candidate node** in the cluster. If existing headroom is found on *any* node that satisfies the pod's selectors (even if that node is on the same priority tier or a lower priority tier), CA **drains the candidate node into that existing headroom without provisioning a higher-priority node**.
+-   **Sustained stockout churn on manual node pools (`nodePoolAutoCreation.enabled: false`)**:
+    1. Higher-priority capacity (e.g., `n4d`) experiences a GCE stockout (`ZONE_RESOURCE_POOL_EXHAUSTED` / `scale.up.error.out.of.resources`), placing the higher priority into a 5-minute cooldown.
+    2. `optimizeRulePriority` selects a candidate node pool at index > 0 (`high_priority_migration.go:105-128`).
+    3. `simulateNodeRemovals` checks whether candidate pods fit onto any existing non-candidate node in `destinationMap`. Whenever spare headroom exists on other fallback nodes, CA cordons and drains the candidate node (`autoscaling.gke.io/defrag-candidate`, `ToBeDeletedByClusterAutoscaler`), and `kube-scheduler` reschedules the evicted pods laterally or downward onto those existing fallback nodes.
+    4. For unremovable nodes that require scale-up, the higher-priority scale-up attempt fails with stockout and backs off for 5 minutes (`high_priority_migration.go:207-209`).
+    5. Every 5 minutes when the backoff expires, the cycle repeats, producing continuous voluntary eviction loops.
+    6. **Recommendation ([Public Issue 445891977](https://issuetracker.google.com/issues/445891977))**: When operating manual node pools or during sustained zonal stockouts and peak customer events, set `spec.activeMigration.optimizeRulePriority: false` to ensure cluster stability.
+
+#### Anti-pattern with `activeMigration`: Sub-selecting priority tiers via custom labels in a shared ComputeClass
+
+Defining a single "kitchen-sink" ComputeClass with multiple priorities (e.g., Priority 0 = General Spot, Priority 1 = HighMem Solr On-Demand) and relying on custom `nodeSelector` labels (e.g., `workload: solr`) via `priorities[].nodeLabels` or manual node pool labels to steer pods has two distinct operational behaviors depending on whether `activeMigration` is enabled:
+-   **Without `activeMigration` (`optimizeRulePriority: false`) — safe for scale-up**: During scale-up, Cluster Autoscaler's predicate checker skips priority rules/pools whose node template lacks `workload: solr` and scales up the highest-priority matching tier without eviction churn. However, because `activeMigration` is configured at the ComputeClass level, keeping `optimizeRulePriority: false` disables active migration for *all* workloads sharing that class.
+-   **With `activeMigration` (`optimizeRulePriority: true`) — continuous lateral and downward eviction thrash**: CA's drift controller strictly expects all workloads in that ComputeClass to converge to Priority 0 (`high_priority_migration.go:105`). Because Priority 0 lacks `workload: solr`, CA cannot migrate Solr pods there; however, in `simulation.go:88-98`, CA inspects existing nodes matching `workload: solr`, identifies other Priority 1 (or Priority 2+) nodes as valid destinations in `destinationMap`, and drains nodes laterally or downward into existing headroom in an endless 5-minute loop.
+-   **The architectural solution**: If `activeMigration.optimizeRulePriority: true` is desired, split the monolithic class into **dedicated ComputeClasses** per workload profile (e.g., `solr-computeclass` and `general-computeclass`). In `solr-computeclass`, place Solr's preferred machine shape (e.g., HighMem On-Demand or Reserved) at **Priority 0** (`ccc_priority_index: "0"`). This aligns CA's optimality model with workload requirements, permanently eliminating false-positive candidate selection.
+
+#### Reservation vs. Spot priority ordering
+
+When combining Commitments / Specific Reservations and Spot VMs:
+-   **Prioritize Reserved On-Demand over Spot**: Place Reserved On-Demand at **Priority 0** (`spec.priorities[0]`) and Spot at **Priority 1+**.
+-   **Financial and stability risk of Spot at Priority 0**: If Spot is configured at Priority 0 and Reservations at Priority 1, `optimizeRulePriority: true` will continuously evict workloads off already-paid-for reserved capacity whenever Spot becomes available. Furthermore, unused specific reservations continue to accrue hourly GCE charges, resulting in double-spend and unnecessary eviction disruption.
 
 ### 2. `ensureAllDaemonSetPodsRunning` (`daemonset` defragmentation plugin)
 

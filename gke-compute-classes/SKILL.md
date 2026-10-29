@@ -109,6 +109,22 @@ not block the user's initial request.** If asked for YAML/recommendations:
             diagnose a `Pending` ComputeClass Pod as a missing Spot toleration
             unless the events actually name that taint. (Contrast the GPU taint
             above, which genuinely is the user's responsibility in every case.)
+    *   **CRITICAL COMPUTECLASS-SPLIT RULE (CUSTOM-LABEL SUB-SELECTION WITH
+        ACTIVE MIGRATION):** Sub-selecting priority tiers via custom
+        `nodeSelector` labels (`priorities[].nodeLabels` or manual node pool
+        labels) inside a shared ComputeClass works as expected for scale-up
+        when `activeMigration.optimizeRulePriority: false`, **but causes
+        continuous eviction churn when combined with
+        `activeMigration.optimizeRulePriority: true`**. When
+        `optimizeRulePriority: true` is enabled, `high_priority_migration.go:102-112`
+        evaluates `priorityGroupIndex` globally per ComputeClass
+        (`ccc_priority_index: "0"` only applies to index 0), treating any pool
+        at index > 0 as permanently suboptimal and draining nodes laterally or
+        downward into existing headroom (`simulation.go:88-98`). When using
+        `activeMigration.optimizeRulePriority: true`, split workloads into
+        dedicated ComputeClasses per compute/lifecycle profile (e.g.,
+        `system-highmem`, `worker-spot`) so each workload's preferred tier is at
+        Priority 0.
     *   **CRITICAL PRIORITYSCORE RULE:** A shared `priorityScore` makes one
         tie-break tier (lowest unit cost wins), but applies to a MAXIMUM of 3
         rules. NEVER emit more than 3 priorities at the same score; if the user
@@ -230,6 +246,14 @@ not block the user's initial request.** If asked for YAML/recommendations:
     -   *PDBs vs Template Annotations*: Modifying `safe-to-evict: "false"` inside `spec.template.metadata.annotations` changes the `PodTemplateSpec` hash and forces an **immediate rolling restart** of the Deployment. In contrast, managing a dedicated PodDisruptionBudget operates out-of-band with **zero pod restarts**.
     -   *Golden Path Pattern*: (1) Apply a rollout-scoped PDB with `maxUnavailable: 0` matching `version: green` alongside the Green Deployment. (2) Execute phased traffic shift while Green pods remain locked to their nodes. (3) After 100% cutover, patch the PDB to the standard operational budget (`maxUnavailable: 25%`) to allow `activeMigration` to resume background node optimization.
     -   *Safety*: `maxUnavailable: 0` does not block pod creation (Pod Create API) or rollback (Pod Delete API). Involuntary VM loss (Spot preemption) bypasses PDBs and ReplicaSet spawns replacements immediately.
+-   **Active Migration Stockout Churn (`CreateBeforeDelete` Existing-Headroom Drain) & Reservation/Spot Ordering:**
+    -   *Existing-Headroom Drain Trap*: In `high-priority-migration`, `CreateBeforeDelete` mode drains candidate nodes whenever their pods fit onto *any existing non-candidate node* in the cluster (`destinationMap`), without verifying that destination nodes are at a strictly higher priority or that preferred capacity is obtainable (public issue tracker `https://issuetracker.google.com/issues/445891977`). During sustained zonal stockouts (`ZONE_RESOURCE_POOL_EXHAUSTED`) with manual node pools (`nodePoolAutoCreation.enabled: false`), MIG stockout backoffs reset every 5 minutes, causing repeated drain/eviction loops into existing spare headroom.
+    -   *Operational Guidance*: During sustained stockouts or peak traffic events (e.g., Black Friday / Cyber Monday), set `activeMigration.optimizeRulePriority: false` across all ComputeClasses. This preserves the top-to-bottom priority fallback order during scale-up while completely stopping voluntary defragmentation evictions.
+    -   *Reservation vs. Spot Ordering*: If a customer has paid On-Demand Reservations, placing `spot: true` at Priority 0 above Reserved On-Demand rules leaves paid Reservations idle during scale-up (scale-up attempts Spot first) and causes `activeMigration` to treat Reserved On-Demand nodes (`index >= 1`) as suboptimal defragmentation candidates. Reserved rules (`reservations.affinity: Specific` or `AnyThenFail`) must be placed at Priority 0 above Spot in their own dedicated ComputeClass.
+-   **Anti-Pattern with `activeMigration`: Sub-Selecting Priority Tiers via Custom `nodeSelector` Labels Inside a Shared ComputeClass:**
+    -   *When It Happens*: Combining multiple distinct workload tiers (e.g., Priority 0: Spot worker shape, Priority 1: On-Demand `highmem` system shape, Priority 2: On-Demand worker shape) in a single shared ComputeClass (e.g., `default`) and using custom `nodeSelector` labels on pods and priority rules (`priorities[].nodeLabels` or manual node pool labels) to "sub-select" subsets of rules works cleanly for scale-up when `activeMigration.optimizeRulePriority: false` (since the scheduler simulator skips rules/pools lacking the pod's custom label), **but causes continuous eviction churn when combined with `activeMigration.optimizeRulePriority: true`**.
+    -   *Code & Runtime Mechanism*: `high_priority_migration.go:102-112` evaluates `priorityGroupIndex` globally per ComputeClass (`ccc_priority_index: "0"` only applies to index 0). Even when a pod is running on the highest-priority rule compatible with its custom `nodeSelector` (e.g., index `"1"`), Cluster Autoscaler permanently classifies that node pool as suboptimal (`priorityGroupIndex > 0`), tags it with `autoscaling.gke.io/defrag-candidate` / `ToBeDeletedByClusterAutoscaler`, and in `simulateNodeRemovals` (`simulation.go:88-98`) drains it laterally—or even **downward** onto a lower-priority pool (index `"2"`)—whenever spare headroom exists on another node matching the pod's custom label.
+    -   *Prescription*: Label-based sub-selection inside a shared ComputeClass is only safe when `activeMigration.optimizeRulePriority: false`. To enable `activeMigration.optimizeRulePriority: true`, split into **distinct ComputeClasses per workload compute/lifecycle profile** so each workload's preferred tier is at Priority 0 (`ccc_priority_index: "0"`), and pods select only `cloud.google.com/compute-class: <NAME>`.
 -   **Fallback Ladder & Standby Headroom Best Practices (`machineFamily` vs `nodepools` & `CapacityBuffer`):**
     -   *Prefer `machineFamily` over `priorities[].nodepools`*: Rules referencing manual node pools do not benefit from ComputeClass cooldown prolongation and rely solely on standard 5-minute GCE MIG backoffs. Sprawling manual pool lists (>6–8 pools) cause early MIG backoffs to expire before lower rungs are evaluated, bouncing the autoscaler back to the top in an infinite loop. Use `machineFamily` with `nodePoolAutoCreation.enabled: true`.
     -   *Place `flexStart: true` at the very end*: Dynamic Workload Scheduler (DWS) queuing takes 3–15+ minutes to return stockout signals; placing `flexStart` higher in the ladder allows earlier backoffs to expire during the wait and resets the autoscaler to the top.
