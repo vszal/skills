@@ -1,294 +1,38 @@
-# GKE ComputeClasses: Debugging and observability
+# GKE ComputeClasses: Symptom-based troubleshooting
 
 ## Table of contents
 
-- [First check: GKE version](#first-check-gke-version): Lines 28-37
-- [ComputeClass status and priority status schema (1.36.4+)](#computeclass-status-and-priority-status-schema-1364): Lines 38-91
-- [Authoritative condition table](#authoritative-condition-table): Lines 92-112
-- [Node annotation contract](#node-annotation-contract): Lines 113-136
-- [Step-by-step recipe: Pod-to-node traceability](#step-by-step-recipe-pod-to-node-traceability): Lines 137-201
-- [Step-by-step recipe: Hard stockout detection](#step-by-step-recipe-hard-stockout-detection): Lines 202-246
-- [Step-by-step recipe: Active migration & config drift rollout stalls](#step-by-step-recipe-active-migration-config-drift-rollout-stalls): Lines 247-260
-- [Step-by-step recipe: Reservation realization & spillover forensics](#step-by-step-recipe-reservation-realization-spillover-forensics): Lines 261-273
-- [Step-by-step recipe: Minimum capacity (`minimumCapacity.targetNodeCount`) & floor protection (1.36.4-gke.1391000+)](#step-by-step-recipe-minimum-capacity-minimumcapacitytargetnodecount-floor-protection-1364-gke1391000): Lines 274-287
-- [Symptom 1: ComputeClass config error](#symptom-1-computeclass-config-error): Lines 288-296
-- [Symptom 2: Scale-up failure (pods pending)](#symptom-2-scale-up-failure-pods-pending): Lines 297-312
-- [Symptom 3: Trapped in pending (GPU tolerations missing)](#symptom-3-trapped-in-pending-gpu-tolerations-missing): Lines 313-327
-- [Symptom 4: Wrong nodes provisioned (E2 fallback trap)](#symptom-4-wrong-nodes-provisioned-e2-fallback-trap): Lines 328-335
-- [Symptom 5: Active migration blocked](#symptom-5-active-migration-blocked): Lines 336-345
-- [Symptom 6: ImageType fragmentation bug (pre-1.33.5)](#symptom-6-imagetype-fragmentation-bug-pre-1335): Lines 346-353
-- [Symptom 7: Pods ignoring ComputeClass](#symptom-7-pods-ignoring-computeclass): Lines 354-359
-- [Symptom 8: "ANY" reservation bypasses fallbacks](#symptom-8-any-reservation-bypasses-fallbacks): Lines 360-366
-- [Symptom 9: Disk/PV attachment fail](#symptom-9-diskpv-attachment-fail): Lines 367-373
-- [Symptom 10: Zonal PV deadlock (pending pods)](#symptom-10-zonal-pv-deadlock-pending-pods): Lines 374-380
-- [Symptom 11: List loops / backoff](#symptom-11-list-loops-backoff): Lines 381-387
-- [Symptom 12: Pods on low-priority nodes](#symptom-12-pods-on-low-priority-nodes): Lines 388-398
-- [Symptom 13: Active migration thrash / continuous pod evictions (custom label sub-selection or stockout churn)](#symptom-13-active-migration-thrash--continuous-pod-evictions-custom-label-sub-selection-or-stockout-churn): Lines 400-422
-- [Useful commands](#useful-commands): Lines 423-447
+- [First check: GKE version and observability telemetry](#first-check-gke-version-and-observability-telemetry): Lines 21-32
+- [Symptom 1: ComputeClass config error](#symptom-1-computeclass-config-error): Lines 33-41
+- [Symptom 2: Scale-up failure (pods pending)](#symptom-2-scale-up-failure-pods-pending): Lines 42-57
+- [Symptom 3: Trapped in pending (GPU tolerations missing)](#symptom-3-trapped-in-pending-gpu-tolerations-missing): Lines 58-72
+- [Symptom 4: Wrong nodes provisioned (E2 fallback trap)](#symptom-4-wrong-nodes-provisioned-e2-fallback-trap): Lines 73-80
+- [Symptom 5: Active migration blocked](#symptom-5-active-migration-blocked): Lines 81-90
+- [Symptom 6: ImageType fragmentation bug (pre-1.33.5)](#symptom-6-imagetype-fragmentation-bug-pre-1335): Lines 91-98
+- [Symptom 7: Pods ignoring ComputeClass](#symptom-7-pods-ignoring-computeclass): Lines 99-104
+- [Symptom 8: "ANY" reservation bypasses fallbacks](#symptom-8-any-reservation-bypasses-fallbacks): Lines 105-111
+- [Symptom 9: Disk/PV attachment fail](#symptom-9-diskpv-attachment-fail): Lines 112-118
+- [Symptom 10: Zonal PV deadlock (pending pods)](#symptom-10-zonal-pv-deadlock-pending-pods): Lines 119-125
+- [Symptom 11: List loops / backoff](#symptom-11-list-loops--backoff): Lines 126-132
+- [Symptom 12: Pods on low-priority nodes](#symptom-12-pods-on-low-priority-nodes): Lines 133-143
+- [Symptom 13: Active migration thrash / continuous pod evictions (custom label sub-selection or stockout churn)](#symptom-13-active-migration-thrash--continuous-pod-evictions-custom-label-sub-selection-or-stockout-churn): Lines 144-158
+- [Useful commands](#useful-commands): Lines 159-183
 
-## First check: GKE version
+## First check: GKE version and observability telemetry
 
-If fields are ignored or fail with "not supported," the control plane is likely too old.
+If fields are ignored or fail with "not supported," verify control-plane version floors first:
 
 - **Verify CRD:** `kubectl describe crd computeclasses.cloud.google.com`
 - **Check versions:** `gcloud container clusters describe <CLUSTER> --format="value(currentMasterVersion,currentNodeVersion)"`
-- **GKE 1.36.4-gke.1391000+:** Introduces granular `status.priorityStatuses[]`, `ccc_priority_index` node annotations, and explicit provisioning conditions (`ProvisioningSuspended`, `ProvisioningConstrained`).
+- **Key floors:** `1.33.13+` (`ccc_priority_index` node annotation); `1.36.4-gke.1391000+` (`status.priorityStatuses[]`, `ProvisioningSuspended` / `ProvisioningConstrained` UTC backoff timers, and `com.google.cloud.v1.computeclasses.status` Cloud Audit Logs).
 
----
-
-## ComputeClass status and priority status schema (1.36.4+)
-
-In GKE 1.36.4-gke.1391000+, GKE reports granular status per priority tier directly on the `ComputeClass` custom resource under `status.priorityStatuses[]`.
-
-### Status schema breakdown
-
-```yaml
-status:
-  # Cluster-level conditions for the ComputeClass resource
-  conditions:
-  - type: Health
-    status: "True"
-    lastTransitionTime: "2026-09-18T17:02:57Z"
-    reason: Health
-    message: "Crd is healthy."
-  
-  # Granular status per priority tier
-  priorityStatuses:
-  - identifier: "0"                     # Priority tier identifier ("0", "1", "2" matching spec.priorities)
-    resourceInfo:                       # Allocation and utilization tracking for this tier
-    - name: cpu
-      unit: Cores
-      currentCount: 2
-      targetCount: 2
-      currentUtilizationPercentage: 16
-      measuredAt: "2026-09-18T17:06:52Z"
-    - name: memory
-      unit: GiB
-      currentCount: 6
-      targetCount: 6
-      currentUtilizationPercentage: 11
-      measuredAt: "2026-09-18T17:06:52Z"
-    scalingEventsHistory:               # Aggregated scaling telemetry
-      provisionedNodesCount: 1
-      consolidatedNodesCount: 0
-      migratedNodesCount: 0
-      measuredSince: "2026-09-18T17:03:06Z"
-      measuredAt: "2026-09-18T17:06:52Z"
-    conditions:                         # Priority-specific lifecycle and backoff conditions
-    - type: MinCapacityProvisioned
-      status: "True"
-      reason: ProvisioningComplete
-      lastTransitionTime: "2026-09-18T17:05:12Z"
-```
-
-### Schema field definitions
-
-- `identifier`: A string representing the priority this status applies to. For user-defined rules in `spec.priorities`, this matches the 0-based array index (`"0"`, `"1"`, `"2"`). If `whenUnsatisfiable: ScaleUpAnyway` is configured, GKE appends a synthetic `PriorityStatus` entry with `identifier: "ScaleUpAnyway"`.
-- `configHash`: A SHA-256 hex digest (`priorityStatuses[].configHash` and top-level `status.configHash`) fingerprinting the active priority rule and spec to detect configuration drift.
-- `resourceInfo`: Per-priority resource capacity and usage metrics (`cpu`, `memory`, `nvidia.com/gpu`, `google.com/tpu`) showing `currentCount`, `targetCount`, `unit` (`Cores`, `GiB`, `Cards`), `currentUtilizationPercentage`, and `measuredAt`.
-- `scalingEventsHistory`: Lifecycle counters recording `provisionedNodesCount`, `consolidatedNodesCount`, and `migratedNodesCount` between `measuredSince` and `measuredAt`.
-
----
-
-## Authoritative condition table
-
-GKE Cluster Autoscaler reports priority-specific operational states via `status.priorityStatuses[].conditions[]`:
-
-| Condition type | Severity | Scope | Meaning and autoscaler behavior |
-|---|---|---|---|
-| `ProvisioningSuspended` | High | Priority tier | The entire priority tier is in full backoff across all zones and shapes due to GCE capacity stockouts, quota caps, or repeated scale-up failures. The autoscaler skips this tier until the UTC backoff timestamp in `message` expires (`NodeProvisioning associated with this priority failed due to the <Reason> error. Backing off the priority until YYYY-MM-DD HH:MM:SS UTC.`). |
-| `ProvisioningConstrained` | High / Medium | Partial / Zonal | Node pools associated with this priority failed scale-up in specific zones and entered backoff cooldown (`NodeProvisioning of the node pools associated with this priority failed due to the <Reason> error. In backoff until YYYY-MM-DD HH:MM:SS UTC.`). Healthy zones remain active on this priority. |
-| `IpSpaceExhausted` | High | Priority tier / Subnet | Secondary Pod CIDR range in the VPC subnet is exhausted (`reason: IpSpaceExhausted`, `NodeProvisioning associated with this priority failed due to IpSpaceExhausted error. Backing off the priority until YYYY-MM-DD HH:MM:SS UTC.`). |
-| `NodeProvisioningInProgress` | Info | Priority tier | The autoscaler has triggered node pool auto-creation or node scale-up with Compute Engine (`reason: PodPending`, `1 new nodes will be added with config: {NodePool: ..., MachineType: ..., Zones: ...}`). Cleared automatically once nodes join as Ready. |
-| `MinCapacityProvisioning` | Info | Priority tier | Proactive `minimumCapacity.targetNodeCount` node provisioning has started (`reason: ProvisioningStarted`). |
-| `MinCapacityProvisioned` | Info | Priority tier | Tracks proactive `minimumCapacity.targetNodeCount` fulfillment (`status: "False", reason: ProvisioningInProgress` during scale-up; `status: "True", reason: ProvisioningComplete` once floor is satisfied). |
-| `RuleMisconfigured` | High | Priority tier | The priority configuration contains contradictory or unsupported parameters (for example, invalid sysctls, unsupported confidential VM flags, or missing disk topologies). |
-
-> **Included Diagnostic Scripts (`assets/`):**
-> - `./assets/trace-pod-scaleup.sh <pod-name> [namespace]`: Automates end-to-end pod-to-node scale-up tracing (`nodeSelector` -> `status.priorityStatuses[]` -> CA visibility logs -> node `ccc_priority_index`).
-> - `./assets/monitor-hard-stockouts.sh [compute-class-name]`: Scans all ComputeClasses for active `ProvisioningSuspended`, `ProvisioningConstrained`, and `IpSpaceExhausted` conditions, UTC backoff expiration windows, and stuck `Pending` pods.
-> - `./assets/verify-minimum-capacity.sh <compute-class-name>`: Audits `minimumCapacity.targetNodeCount`, `MinCapacityProvisioned`, and expected `min-nodes-fake-*` scale-down protection logs.
-
----
-
-## Node annotation contract
-
-When GKE provisions nodes via node auto-provisioning for a ComputeClass, it marks every node with:
-- Label: `cloud.google.com/compute-class: <compute-class-name>`
-- Annotation: `ccc_priority_index: "<value>"`
-
-### Annotation values
-
-| `ccc_priority_index` value | Meaning | Cause |
-|---|---|---|
-| `"0"`, `"1"`, `"2"`, etc. | Configured priority tier | The node was provisioned by the corresponding 0-based rule in `spec.priorities`. |
-| `"ccc_scale_up_anyway"` | Unconstrained fallback | All defined priorities failed or were unavailable, and GKE provisioned a default node (typically E2) because `whenUnsatisfiable: ScaleUpAnyway` was configured. |
-| `"ccc_no_rule_matching"` | Unmatched node pool | The node was provisioned into a pool that did not match an active priority rule, or belongs to a pre-existing manual pool. |
-| `"ccc_deleted"` | Deleted priority rule | The node was provisioned by a priority rule that has since been deleted from `spec.priorities` (config drift). |
-
-### Querying node placement across the cluster
-
-```bash
-kubectl get nodes \
-  -o custom-columns=NAME:.metadata.name,CCC:.metadata.labels.cloud\.google\.com/compute-class,PRIORITY_INDEX:.metadata.annotations.ccc_priority_index,ZONE:.metadata.labels.topology\.kubernetes\.io/zone,TYPE:.metadata.labels.node\.kubernetes\.io/instance-type
-```
-
----
-
-## Step-by-step recipe: Pod-to-node traceability
-
-Follow this end-to-end recipe (or run `./assets/trace-pod-scaleup.sh <pod-name> [namespace]`) to trace why a pending pod was placed on a specific node tier:
-
-1. **Inspect pending pod phase and events:**
-   ```bash
-   kubectl get pod <pod-name> -n <namespace> -o wide
-   kubectl get events -n <namespace> --field-selector involvedObject.name=<pod-name>
-   ```
-   Check for `TriggeredScaleUp`, `Scheduled`, or `FailedScaleUp`.
-
-2. **Inspect referenced ComputeClass spec and priority statuses:**
-   ```bash
-   CC_NAME=$(kubectl get pod <pod-name> -n <namespace> -o jsonpath='{.spec.nodeSelector.cloud\.google\.com/compute-class}')
-   kubectl get computeclass "$CC_NAME" -o yaml
-   ```
-   Map configured `spec.priorities` indices (`0`, `1`, `2`) to `status.priorityStatuses[]`. Check whether higher-priority tiers have `ProvisioningSuspended: True` or `ProvisioningConstrained: True`.
-
-3. **Query Cluster Autoscaler Visibility logs:**
-   ```bash
-   gcloud logging read '
-     log_id("container.googleapis.com/cluster-autoscaler-visibility")
-     AND jsonPayload.resultInfo.results.decision.scaleUp:*
-   ' --limit=10 --format="table(timestamp,jsonPayload.trigger,jsonPayload.resultInfo.results[0].decision.scaleUp)"
-   ```
-   Locate the scale-up decision referencing your pod's controller group and target node pool.
-
-4. **Audit historical ComputeClass status updates in Cloud Audit Logs:**
-   ```text
-   resource.type="k8s_cluster"
-   protoPayload.resourceName:"cloud.google.com/v1/computeclasses/<COMPUTECLASS_NAME>"
-   protoPayload.methodName:"com.google.cloud.v1.computeclasses.status"
-   ```
-   Expand `protoPayload.request.status` in any returned entry to inspect historical snapshots of `status.conditions`, `status.priorityStatuses[].conditions`, `resourceInfo` (`targetCount > currentCount` for scale-up vs. `< currentCount` for scale-down), and `scalingEventsHistory` (`provisionedNodesCount` vs. `consolidatedNodesCount`). To audit historical node `ccc_priority_index` placement after nodes have been deleted/scaled down, query:
-   ```text
-   resource.type="k8s_cluster"
-   protoPayload.methodName="io.k8s.core.v1.nodes.create"
-   protoPayload.request.metadata.labels."cloud.google.com/compute-class"="<COMPUTECLASS_NAME>"
-   ```
-
-5. **Query Cloud Monitoring metrics (`k8s_entity`):**
-   Available on GKE 1.36+, use `resource.labels.entity_type = "ComputeClass"` and `resource.labels.entity_name = "<CCC_NAME>"` (or `""` for non-ComputeClass activity):
-   - `kubernetes.io/autoscaler/cluster_pending_pods_per_ccc`: Pending Pods awaiting provisioning (or `UnableToProvision`).
-   - `kubernetes.io/autoscaler/cluster_node_provisioning_attempts_count_per_ccc`: Scale-up attempts initiated per ComputeClass.
-     - **Async Rule**: Never subtract failures from attempts in real time; compare trends over a rolling window (`rate(10m)`).
-   - `kubernetes.io/autoscaler/cluster_node_provisioning_failed_attempts_count_per_ccc`: Failed scale-ups grouped by `metric.labels.reason` (15 codes: `RESOURCE_POOL_EXHAUSTED` [maps to `OutOfResources` in CRD status], `QUOTA_EXCEEDED`, `IP_SPACE_EXHAUSTED`, `PERMISSIONS_ERROR`, `VM_EXTERNAL_IP_ACCESS_POLICY_CONSTRAINT`, `INVALID_RESERVATION`, `RESERVATION_NOT_FOUND`, `RESERVATION_NOT_READY`, `RESERVATION_CAPACITY_EXCEEDED`, `RESERVATION_INCOMPATIBLE`, `AUTOMATIC_RESERVATIONS_NOT_AVAILABLE`, `AUTOMATIC_RESERVATIONS_NO_CAPACITY`, `UNSUPPORTED_TPU_CONFIGURATION`, `GkePersistentOperationError`, `OTHER`).
-
-6. **Verify provisioned node placement and annotation:**
-   ```bash
-   NODE_NAME=$(kubectl get pod <pod-name> -n <namespace> -o jsonpath='{.spec.nodeName}')
-   kubectl get node "$NODE_NAME" -o jsonpath='
-     Node: {.metadata.name}
-     ComputeClass Label: {.metadata.labels.cloud\.google\.com/compute-class}
-     Priority Index Annotation: {.metadata.annotations.ccc_priority_index}
-     Instance Type: {.metadata.labels.node\.kubernetes\.io/instance-type}
-     Zone: {.metadata.labels.topology\.kubernetes\.io/zone}
-   '
-   ```
-   Interpret `ccc_priority_index`:
-   - If `"0"`: Workload was provisioned on primary priority.
-   - If `"1"` or `"2"`: Higher tiers were bypassed due to stockouts or constraints.
-   - If `"ccc_scale_up_anyway"`: All priority tiers failed, and fallback node was created.
-
----
-
-## Step-by-step recipe: Hard stockout detection
-
-A hard stockout occurs when all priority rules fail simultaneously, leaving workloads stuck in `Pending`. Run `./assets/monitor-hard-stockouts.sh [compute-class-name]` or follow these steps:
-
-1. **Check for suspended priority tiers:**
-   ```bash
-   kubectl get computeclasses -o json | jq -r '
-     .items[] | {name: .metadata.name, priorities: [
-       .status.priorityStatuses[]? | {
-         id: .identifier,
-         suspended: (.conditions[]? | select(.type=="ProvisioningSuspended" and .status=="True") | .message)
-       }
-     ]}
-   '
-   ```
-   If all priority identifiers show active `ProvisioningSuspended` messages with `until YYYY-MM-DD HH:MM:SS UTC`, the class is completely backed off.
-
-2. **Inspect stuck pods and Warning events:**
-   ```bash
-   kubectl get pods -A --field-selector=status.phase=Pending
-   kubectl get events -A --field-selector reason=FailedScaleUp --sort-by='.metadata.creationTimestamp'
-   ```
-   Look for:
-   `Warning FailedScaleUp: pod didn't trigger scale-up: all priority rules in backoff`
-   or
-   `Warning FailedScaleUp: GCE out of resources`
-
-3. **Query Cluster Autoscaler Visibility logs for unhandled scale-up failures:**
-   ```bash
-   gcloud logging read '
-     log_id("container.googleapis.com/cluster-autoscaler-visibility")
-     AND (jsonPayload.resultInfo.results.error.messageId="scale.up.error.out.of.resources"
-          OR jsonPayload.noDecisionStatus.noScaleUp:*)
-   ' --limit=15 --format="json"
-   ```
-   Examine `unhandledPodGroups[].napFailureReasons[]` for specific stockout messages (`scale.up.error.out.of.resources`) and parameter details (machine shape and zone).
-
-4. **Remediation actions:**
-   - Add cross-family fallback rules in `spec.priorities` (for example, fallback from `n4` to `c4` or `c3d`).
-   - Broaden zone options: ensure `location.zones` does not restrict scheduling to an exhausted zone.
-   - For batch workloads, consider `whenUnsatisfiable: ScaleUpAnyway` if progress on default shapes is acceptable.
-   - Request GCE regional quota increase if logs show `scale.up.error.quota.exceeded`.
-
----
-
-## Step-by-step recipe: Active migration & config drift rollout stalls
-
-When updating a ComputeClass spec or enabling `spec.activeMigration` to rebalance workloads back to Priority 0, node replacement can stall silently due to restrictive PodDisruptionBudgets (PDBs) or `safe-to-evict: false` annotations.
-
-1. **Inspect `status.migration.configDrift`:**
-   ```bash
-   kubectl get computeclass <name> -o jsonpath='{.status.migration.configDrift}' | jq .
-   ```
-   Check `driftedNodes` vs. `currentNodes`, and inspect `blockedNodes[]` grouped by reason (`PodDisruptionBudget`, `BlockingPods`, `ReplacementUnavailable`, `MaxNodeDisruptionReached`).
-2. **Distinguish planned migration from Spot preemption churn:**
-   Compare `scalingEventsHistory.migratedNodesCount` (active defragmentation to higher priorities) against `consolidatedNodesCount` (low-utilization scale-down) in live status or Cloud Audit Logs (`protoPayload.request.status`).
-
----
-
-## Step-by-step recipe: Reservation realization & spillover forensics
-
-To verify whether workloads consumed paid GCE capacity reservations (`reservationAffinity: any` or specific reservations) or spilled over to On-Demand billing:
-
-1. **Inspect reservation status conditions:**
-   Check `status.priorityStatuses[0].conditions[]` (live or in Cloud Audit Logs) for `ReservationCapacityExceeded`, `ReservationNotFound`, `ReservationNotReady`, or `ReservationIncompatible`.
-2. **Quantify On-Demand spillover:**
-   Compare `resourceInfo.currentCount` on Priority `"0"` (Reserved) vs. Priority `"1"` (Unreserved On-Demand fallback).
-3. **Query Cloud Monitoring MQL (`k8s_entity`):**
-   Monitor `kubernetes.io/autoscaler/cluster_node_provisioning_failed_attempts_count_per_ccc` filtered by `metric.labels.reason =~ "RESERVATION_.*|AUTOMATIC_RESERVATIONS_.*"`.
-
----
-
-## Step-by-step recipe: Minimum capacity (`minimumCapacity.targetNodeCount`) & floor protection (1.36.4-gke.1391000+)
-
-When configuring `spec.priorities[].minimumCapacity.targetNodeCount`, GKE proactively provisions warm floor nodes even with zero workload pods (`./assets/verify-minimum-capacity.sh <compute-class-name>`):
-
-1. **Inspect `MinCapacityProvisioning` and `MinCapacityProvisioned` conditions:**
-   ```bash
-   kubectl get computeclass <name> -o jsonpath='{.status.priorityStatuses[0].conditions}' | jq .
-   ```
-   During proactive scale-up, `MinCapacityProvisioning` (`reason: ProvisioningStarted`) and `MinCapacityProvisioned: False` (`reason: ProvisioningInProgress`) appear. Once satisfied, `MinCapacityProvisioned: True` (`reason: ProvisioningComplete`) is set and `resourceInfo` shows `currentCount == targetCount` with `currentUtilizationPercentage: 0`.
-2. **Understand `min-nodes-fake-*` and `no.scale.down.node.no.place.to.move.pods` (WAI):**
-   To prevent idle floor nodes from being consolidated by Cluster Autoscaler, GKE injects synthetic floor placeholder pods (`min-nodes-fake-0`, `min-nodes-fake-1`) during scale-down simulation. In `container.googleapis.com/cluster-autoscaler-visibility` logs, these nodes report `noScaleDown` with `messageId: "no.scale.down.node.no.place.to.move.pods"` and `parameters: ["min-nodes-fake-0"]`. This is **working as intended (WAI)** floor protection, NOT a pod eviction or PDB issue.
+> **Observability & Forensics Reference:** For `status.priorityStatuses[]` schemas, authoritative condition tables (`ProvisioningSuspended`, `ProvisioningConstrained`, `CapacityConstrained`), live `kubectl` + `jq` backoff-remaining countdowns, Cloud Audit Log / Log Analytics SQL queries, `status.migration.configDrift`, and `k8s_entity` metrics, read [`compute-class-observability.md`](./compute-class-observability.md) and use `./assets/trace-pod-scaleup.sh`, `./assets/monitor-hard-stockouts.sh`, and `./assets/verify-minimum-capacity.sh`.
 
 ---
 
 ## Symptom 1: ComputeClass config error
 
-Check `status.conditions` on the ComputeClass object via `kubectl describe ComputeClass <NAME>`.
+Check `status.conditions` (`Health`, `CrdMisconfigured`) and `status.priorityStatuses[].conditions` (`RuleMisconfigured`) via `kubectl describe ComputeClass <NAME>`.
 
 - **Common error:** `location config with specific reservations enabled`.
 - **Fix:** Remove `location.zones` from the reservation priority — zones come from `reservations.specific[].zones` instead. Only `location.zones` collides; a policy-only `location.locationPolicy` (e.g. `BALANCED`) may remain.
@@ -297,7 +41,7 @@ Check `status.conditions` on the ComputeClass object via `kubectl describe Compu
 
 ## Symptom 2: Scale-up failure (pods pending)
 
-Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/cluster-autoscaler-visibility)).
+Check `status.priorityStatuses[]` (`./assets/monitor-hard-stockouts.sh --ccc <name>`) and **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/cluster-autoscaler-visibility)):
 
 - **Log filter:** `log_id("container.googleapis.com/cluster-autoscaler-visibility")`
 - **Asset:** `assets/log-autoscaler-events.sh <cluster-name>` (Live tail).
@@ -306,7 +50,7 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 |---|---|---|
 | `scale.up.error.out.of.resources` | GCE stockout | Add zone/family fallbacks. |
 | `scale.up.error.quota.exceeded` | Project quota cap | Raise quota in target region. |
-| `scale.up.error.ip.space.exhausted` | Subnet full | Expand subnet ranges. |
+| `scale.up.error.ip.space.exhausted` | Subnet full | Expand subnet primary or Pod secondary CIDR ranges. |
 | `scale.up.no.scale.up` | No priority matched | Check Pod requests vs shapes. |
 
 ---
@@ -329,71 +73,71 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 ## Symptom 4: Wrong nodes provisioned (E2 fallback trap)
 
 - **Symptom:** Requested specific nodes (e.g., `C3` or `N4`), but GKE provisions default `E2` nodes.
-- **Cause:** `whenUnsatisfiable: ScaleUpAnyway` provisions generic E2 nodes to start the pod if preferred hardware fails. In GKE 1.36.4+, these nodes carry `ccc_priority_index: "ccc_scale_up_anyway"`.
+- **Cause:** `whenUnsatisfiable: ScaleUpAnyway` provisions generic E2 nodes if preferred hardware fails. On GKE `1.33.13+`, these nodes carry `ccc_priority_index: "ccc_scale_up_anyway"`.
 - **Fix:** Set `whenUnsatisfiable: DoNotScaleUp` to strictly enforce hardware list.
 
 ---
 
 ## Symptom 5: Active migration blocked
 
-- **Symptom:** Spot capacity returned, but pods stuck on On-Demand nodes.
-- **Cause:** Pod Disruption Budgets (PDBs) block eviction. Active migration strictly honors PDBs.
-- **Fix:** Ensure PDBs allow at least 1 disruption. `maxUnavailable: 0` blocks migration.
-- **Common GKE blocker — system-managed pods:** Non-DaemonSet pods in system namespaces (`kube-system`, `gke-managed-*`, `gmp-system`) often carry tight PDBs + low replicas, so the source node cannot drain (also blocks ordinary scale-down). Check `kubectl get pdb -A` and the autoscaler `noScaleDown` reason; raise replicas to add PDB headroom or isolate them onto a separate ComputeClass.
-- **Note:** PDBs / `safe-to-evict` only gate *voluntary* disruption; Spot preemption is involuntary and ignores both.
+- **Symptom:** Spot capacity returned, but pods remain on On-Demand fallback nodes.
+- **Cause:** PodDisruptionBudgets (PDBs) or `safe-to-evict: "false"` block voluntary eviction. Check `status.migration.configDrift` (`blockedNodes[]`) or `noDecisionStatus.noScaleDown` in visibility logs (see [`compute-class-observability.md`](./compute-class-observability.md)).
+- **Fix:** Ensure PDBs allow at least 1 disruption (`maxUnavailable: 0` blocks migration).
+- **Common GKE blocker — system-managed pods:** Non-DaemonSet pods in system namespaces (`kube-system`, `gke-managed-*`, `gmp-system`) often carry tight PDBs + low replicas, preventing source node drain. Check `kubectl get pdb -A`; raise replicas or isolate system pods onto a separate ComputeClass.
+- **Note:** PDBs / `safe-to-evict` gate *voluntary* disruption only; Spot preemption is involuntary and bypasses both.
 
 ---
 
 ## Symptom 6: ImageType fragmentation bug (pre-1.33.5)
 
 - **Symptom:** Autoscaler creates hundreds of tiny, fragmented node pools.
-- **Cause:** Explicitly defining `imageType: UBUNTU_CONTAINERD` (or COS) on versions older than 1.33.5-gke.1862000 (and 1.34.1-gke.2541000).
+- **Cause:** Explicitly defining `imageType: UBUNTU_CONTAINERD` (or COS) on versions older than `1.33.5-gke.1862000` (and `1.34.1-gke.2541000`).
 - **Fix:** Upgrade cluster or temporarily remove `imageType`.
 
 ---
 
 ## Symptom 7: Pods ignoring ComputeClass
 
-- **Fixes:** Ensure pod has `nodeSelector: cloud.google.com/compute-class: <NAME>`. Translate non-GKE node selectors — a generic/AWS-style `machine-family: c4` won't match; use GKE-native `cloud.google.com/machine-family: c4` (family) or `node.kubernetes.io/instance-type` (shape), or better, move the constraint into the ComputeClass `priorities[]`. Verify manual pools have correct label/taint. Check if Pod requests exceed priority bounds.
+- **Fixes:** Ensure pod has `nodeSelector: cloud.google.com/compute-class: <NAME>`. Translate non-GKE node selectors — generic/AWS-style `machine-family: c4` won't match; use GKE-native `cloud.google.com/machine-family: c4` (family) or `node.kubernetes.io/instance-type` (shape), or move the constraint into `priorities[]`. Verify manual pools carry both label and taint. Check whether Pod requests exceed priority bounds.
 
 ---
 
 ## Symptom 8: "ANY" reservation bypasses fallbacks
 
-- **Cause:** `reservations.affinity: AnyBestEffort` consumes On-Demand capacity at the GCE layer before evaluating your remaining ComputeClass priorities, preventing your intended fallback.
-- **Fix:** Use `affinity: AnyThenFail` (GKE 1.36.0-gke.3204000+) or `affinity: Specific` with named reservations.
+- **Cause:** `reservations.affinity: AnyBestEffort` consumes On-Demand capacity at the GCE layer before evaluating remaining ComputeClass priorities, preventing your intended fallback.
+- **Fix:** Use `affinity: AnyThenFail` (GKE `1.36.0-gke.3204000+`) or `affinity: Specific` with named reservations.
 
 ---
 
 ## Symptom 9: Disk/PV attachment fail
 
 - **Cause:** Mixing Gen 4 VMs (Hyperdisk) and Gen 2 (PD) in the same priority list.
-- **Fix:** Do not mix generations for workloads with attached PVs. Or (GKE 1.35.3-gke.1290000+): back the data PVs with the built-in `dynamic-rwo` StorageClass (`type: dynamic` + `use-allowed-disk-topology: "true"`) — the autoscaler becomes disk-topology-aware and scales up only compatible nodes, so a mixed-generation `priorities[]` no longer attach-fails.
+- **Fix:** Do not mix generations for workloads with attached PVs, or (GKE `1.35.3-gke.1290000+`) back data PVs with built-in `dynamic-rwo` (`type: dynamic` + `use-allowed-disk-topology: "true"`), making the autoscaler disk-topology-aware so mixed-generation `priorities[]` skip incompatible shapes cleanly.
 
 ---
 
 ## Symptom 10: Zonal PV deadlock (pending pods)
 
-- **Symptom:** StatefulSet pod is Pending because disk is in zone B but node is in zone A.
-- **Fix:** Do not hardcode `location` in priorities. Use a `StorageClass` with `volumeBindingMode: WaitForFirstConsumer` so the disk provisions in the chosen node's zone — the built-in `dynamic-rwo` (GKE 1.35.3-gke.1290000+) already sets this plus `use-allowed-disk-topology: "true"`.
+- **Symptom:** StatefulSet pod is Pending because disk is in zone B while node is in zone A.
+- **Fix:** Do not hardcode `location` in priorities. Use a `StorageClass` with `volumeBindingMode: WaitForFirstConsumer` (such as built-in `dynamic-rwo` on GKE `1.35.3-gke.1290000+`) so disks provision in the chosen node's zone.
 
 ---
 
 ## Symptom 11: List loops / backoff
 
-- **Cause:** More than 10 priorities. Unobtainable shapes enter a 5-minute cooldown. Long lists expire upper-tier cooldowns before reaching the bottom, causing an infinite loop.
-- **Fix:** Trim list; remove redundant rules.
+- **Cause:** More than 10 priorities (especially manual `priorities[].nodepools`). Unobtainable pools enter a 5-minute cooldown, and long lists expire upper-tier cooldowns before reaching the bottom, causing an infinite loop.
+- **Fix:** Trim redundant rules and prefer `machineFamily` with `nodePoolAutoCreation.enabled: true` (which benefits from ComputeClass cumulative cooldown prolongation).
 
 ---
 
 ## Symptom 12: Pods on low-priority nodes
 
 - **Symptom:** Pods land on existing low-priority nodes (e.g., On-Demand) instead of triggering scale-up for available high-priority nodes (e.g., Spot).
-- **Cause:** ComputeClass controls *node provisioning*, not *pod scheduling*. K8s schedules pods on any existing node with capacity before scaling up.
+- **Cause:** ComputeClass controls *node provisioning*, not *pod scheduling*. `kube-scheduler` places pods on any existing node with spare capacity before invoking Cluster Autoscaler.
 - **Fix:**
-  1. **ActiveMigration:** Set `optimizeRulePriority: true` to eventually move workloads to higher-priority nodes.
+  1. **ActiveMigration:** Set `optimizeRulePriority: true` to drift workloads back to Priority 0 (avoid `min-nodes > 0` on fallback pools).
   2. **PriorityClass:** Use native K8s PriorityClass for pod-level preemption.
-  3. **Kueue:** Use Kueue for complex batch/AI/ML fair-sharing and queueing.
+  3. **Kueue:** Use Kueue for batch/AI/ML fair-sharing and queueing.
 
 ---
 
@@ -401,23 +145,14 @@ Check **Autoscaler Visibility logs** ([docs](https://docs.cloud.google.com/kuber
 
 - **Symptom:** Nodes are repeatedly cordoned (`autoscaling.gke.io/defrag-candidate`), and pods experience voluntary evictions every ~5 minutes or get evicted laterally between nodes of the same priority without converging.
 - **Root Cause 1 (Monolithic ComputeClass custom-label sub-selection combined with `activeMigration`):**
-  - A single ComputeClass defines multiple priorities (e.g., Priority 0 = General Spot, Priority 1 = HighMem On-Demand). Workloads use custom `nodeSelector` labels (e.g. `workload: solr` via `priorities[].nodeLabels` or manual node pool labels) to target Priority 1+. (Note: while this pattern works for scale-up when `optimizeRulePriority: false`, it causes continuous eviction churn whenever `optimizeRulePriority: true` is enabled.)
-  - CA's priority drift evaluation (`high_priority_migration.go:102-112`) treats **only index 0 as optimal** (`(!priorityGroupFound || priorityGroupIndex > 0)`). Any node annotated with `ccc_priority_index > 0` is permanently treated as a defragmentation candidate.
-  - When simulating pod eviction (`simulation.go:88-98`), CA inspects `destinationMap` and finds other existing nodes matching the pod's selectors. Instead of migrating pods to Priority 0 (which lacks the custom label), CA evicts pods **laterally or downward** into existing headroom, repeating continuously.
+  - A single ComputeClass defines multiple priorities (e.g., Priority 0 = General Spot, Priority 1 = HighMem On-Demand) while workloads use custom `nodeSelector` labels (`priorities[].nodeLabels` or manual pool labels) to target Priority 1+. (Safe for scale-up when `optimizeRulePriority: false`, but causes continuous churn when `optimizeRulePriority: true`.)
+  - Priority drift evaluation (`high_priority_migration.go:102-112`) treats **only index 0 as optimal** (`ccc_priority_index: "0"`). Any node with `ccc_priority_index > 0` is permanently classified as a defragmentation candidate and drained laterally or downward into existing headroom (`simulation.go:88-98`).
 - **Root Cause 2 (Stockout backoff loop in CreateBeforeDelete mode):**
-  - `optimizeRulePriority: true` with manual node pools (`nodePoolAutoCreation.enabled: false`).
-  - High-priority capacity (e.g., Spot) hits a GCE zonal stockout (`ZONE_RESOURCE_POOL_EXHAUSTED` / `scale.up.error.out.of.resources`), entering a 5-minute cooldown (`ProvisioningSuspended`).
-  - Every 5 minutes, when the backoff expires, `optimizeRulePriority` wakes up, cordons fallback nodes, and attempts scale-up. In `CreateBeforeDelete` mode (`defrag.go:53-55`), CA evicts candidate pods into whatever headroom exists across other cluster nodes before stockout failure recurs ([Public Issue 445891977](https://issuetracker.google.com/issues/445891977)).
+  - `optimizeRulePriority: true` with manual node pools (`nodePoolAutoCreation.enabled: false`) during sustained zonal stockouts (`ZONE_RESOURCE_POOL_EXHAUSTED`). Every 5 minutes when MIG backoff expires, `CreateBeforeDelete` (`defrag.go:53-55`) evicts candidate pods into existing spare cluster headroom before scale-up fails again ([Public Issue 445891977](https://issuetracker.google.com/issues/445891977)).
 - **Fixes:**
-  1. **Architectural split into dedicated ComputeClasses:** Never use custom labels to steer workloads between priority tiers inside a single ComputeClass. Create separate, dedicated ComputeClasses per workload profile (e.g., `solr-computeclass` and `general-computeclass`). Place each workload's primary machine shape and lifecycle at **Priority 0** (`ccc_priority_index: "0"`).
-  2. **Disable `optimizeRulePriority` during sustained stockouts / peak events:**
-     ```yaml
-     spec:
-       activeMigration:
-         optimizeRulePriority: false
-     ```
-     This immediately halts voluntary defragmentation candidate evaluation.
-  3. **Order Reservations above Spot:** Place Reserved On-Demand rules at Priority 0 and Spot at Priority 1+ so workloads do not thrash off paid-for reservations into Spot.
+  1. **Split into dedicated ComputeClasses per workload profile** so each workload's preferred shape/lifecycle is at **Priority 0** (`ccc_priority_index: "0"`).
+  2. **Set `activeMigration.optimizeRulePriority: false` during sustained stockouts or peak events** to stop voluntary defragmentation evictions while preserving scale-up priority order.
+  3. **Order Reservations above Spot:** Place Reserved On-Demand rules at Priority 0 above Spot.
 
 ---
 
@@ -435,14 +170,14 @@ kubectl get computeclasses -o json | jq '.items[] | {name: .metadata.name, statu
 kubectl get pods -A -o json | jq -r '.items[] | select(.spec.nodeSelector["cloud.google.com/compute-class"]=="<name>") | .metadata.name'
 
 # Cloud Logging: CA Visibility scale-up decisions
-gcloud logging read 'log_id("container.googleapis.com/cluster-autoscaler-visibility") AND jsonPayload.resultInfo.results.decision.scaleUp:*' --limit=20
+gcloud logging read 'log_id("container.googleapis.com/cluster-autoscaler-visibility") AND jsonPayload.decision.scaleUp:*' --limit=20
 
-# Cloud Logging: CA Visibility stockouts and errors
+# Cloud Logging: CA Visibility stockouts and noScaleUp reasons
 gcloud logging read 'log_id("container.googleapis.com/cluster-autoscaler-visibility") AND (jsonPayload.resultInfo.results.error.messageId="scale.up.error.out.of.resources" OR jsonPayload.noDecisionStatus.noScaleUp:*)' --limit=20
 
-# Cloud Audit Logs: Historical ComputeClass status transitions (survives node scale-down)
+# Cloud Audit Logs: Historical ComputeClass status & backoff transitions (survives node scale-down)
 gcloud logging read 'resource.type="k8s_cluster" AND protoPayload.methodName="com.google.cloud.v1.computeclasses.status" AND protoPayload.resourceName:"cloud.google.com/v1/computeclasses/<name>"' --limit=20
 
-# Cloud Audit Logs: Historical node creation and ccc_priority_index placement (survives node scale-down)
-gcloud logging read 'resource.type="k8s_cluster" AND protoPayload.methodName="io.k8s.core.v1.nodes.create" AND protoPayload.request.metadata.labels."cloud.google.com/compute-class"="<name>"' --limit=20
+# Cloud Audit Logs: Historical ccc_priority_index node annotation patch (stamped ~60s post-create)
+gcloud logging read 'resource.type="k8s_cluster" AND protoPayload.methodName=("io.k8s.core.v1.nodes.patch" OR "io.k8s.core.v1.nodes.update") AND protoPayload.resourceName:"nodes/<node-name>"' --limit=20
 ```

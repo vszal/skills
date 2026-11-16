@@ -39,6 +39,8 @@ When verifying behavior or investigating edge cases, clone the repository or fet
 | **Drainability and eviction blockers** | `pkg/visibility/types/messages.go` | `NoScaleDownNodePodNotSafeToEvictAnnotation`, `NoScaleDownNodePodNotEnoughPdb`, `NoScaleDownNodePodKubeSystemUnmovable` | Defines exact message constants emitted to Cloud Logging (`container.googleapis.com/cluster-autoscaler-visibility`). |
 | **DaemonSet filtering** | `pkg/defrag/processor/simulation.go` | `podutils.FilterRecreatablePods` | Strips DaemonSet pods from node removal simulations; DaemonSets do not block node scale-down. |
 | **Standard GCE MIG backoff schedule** | `pkg/backoff/gke_mig_backoff.go` | `singleMigBackoff`, `NodeGroupBackoffResetTimeout = 3 * time.Hour` | Exponential backoff curve (5m -> 10m -> 20m -> 30m) with 3-hour reset window for manual node pools. |
+| **ComputeClass status backoff timers** | `pkg/computeclass/status/history/crd_backoff_observer.go` | `CrdBackoffObserver.OnNpcBackoff`, `OnBackoff` | Emits `ProvisioningSuspended` and `ProvisioningConstrained` with `lastTransitionTime` and `until YYYY-MM-DD HH:MM:SS UTC` (flushed to Cloud Audit Logs under `com.google.cloud.v1.computeclasses.status`). |
+| **Proactive `CapacityConstrained` filtering** | `pkg/flexadvisor/flexibility_scope_conditions.go` | `updateRuleFilteringConditions`, `ConditionReasonFilteredOut` | Emits `CapacityConstrained` with no fixed `until` timestamp; Compute Engine availability snapshots refresh every 10–20 seconds. |
 
 ---
 

@@ -1324,7 +1324,8 @@ cases {
     "'scalingEventsHistory')."
   expectations:
     "The response references the 'assets/trace-pod-scaleup.sh' helper script "
-    "or 'references/compute-class-debug.md' to trace pod-to-node scale-up."
+    "or 'references/compute-class-observability.md' (or "
+    "'references/compute-class-debug.md') to trace pod-to-node scale-up."
 }
 cases {
   name: "gke_compute_class_soft_vs_hard_stockout_conditions"
@@ -1379,7 +1380,9 @@ cases {
     "'protoPayload.request.status' snapshots."
   expectations:
     "The response provides the Cloud Audit Log query filtering on "
-    "'protoPayload.methodName=\"io.k8s.core.v1.nodes.create\"' to inspect "
+    "'io.k8s.core.v1.nodes.patch' / 'io.k8s.core.v1.nodes.update' (or notes "
+    "that 'ccc_priority_index' is patched onto the node ~60s after "
+    "'io.k8s.core.v1.nodes.create') to inspect "
     "'protoPayload.request.metadata.annotations.ccc_priority_index' on the "
     "deleted nodes."
 }
@@ -1479,5 +1482,31 @@ cases {
     "bounded n2 family catch-all floor (machineFamily: n2 with minCores: 8 "
     "and minMemoryGb: 32) to prune undersized/highcpu variants while "
     "providing zone elasticity."
+}
+cases {
+  name: "compute_class_backoff_time_remaining_and_logs"
+  prompt:
+    "Our pods using a multi-priority GKE ComputeClass on GKE 1.36.4 took 25 "
+    "minutes to scale up, and `cluster-autoscaler-visibility` logs only show "
+    "`no.scale.up.in.backoff` without saying how much backoff time was "
+    "applied or remaining per priority. How do we see the remaining backoff "
+    "time live and in Cloud Logging, and why do some `CapacityConstrained` "
+    "conditions have no `until` timestamp?"
+  expectations:
+    "The response explains that `container.googleapis.com/cluster-autoscaler-visibility` "
+    "logs omit per-priority backoff timestamps, and directs the user to "
+    "`status.priorityStatuses[].conditions[]` (`ProvisioningSuspended` and "
+    "`ProvisioningConstrained`) for live `lastTransitionTime` and `until "
+    "YYYY-MM-DD HH:MM:SS UTC` timestamps (applied = `until - "
+    "lastTransitionTime`, remaining = `until - now`) or `assets/monitor-hard-stockouts.sh`."
+  expectations:
+    "The response explains querying Cloud Audit Logs (`protoPayload.methodName=\"com.google.cloud.v1.computeclasses.status\"`) "
+    "and inspecting `protoPayload.request.status.priorityStatuses[].conditions[]` "
+    "for post-incident historical backoff durations after live conditions clear."
+  expectations:
+    "The response explains that `reason: CapacityConstrained` comes from "
+    "proactive synchronous capacity obtainability filtering, which re-polls "
+    "Compute Engine availability every 10-20 seconds rather than setting a "
+    "fixed local backoff timer, so no `until` timestamp is emitted."
 }
 

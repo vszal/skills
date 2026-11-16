@@ -171,15 +171,25 @@ FAILED_SCALEUP_COUNT=$(echo "$FAILED_SCALEUP_EVENTS" | jq 'length')
 if [[ $(echo "$PRIORITY_STATUSES" | jq 'length') -gt 0 ]]; then
   TOTAL_PRIORITIES=$(echo "$PRIORITY_STATUSES" | jq 'length')
   SUSPENDED_RULES=$(echo "$PRIORITY_STATUSES" | jq -c '
+    now as $now |
     [ .[] |
       select(any(.conditions[]?; (.type == "ProvisioningSuspended" or .type == "ProvisioningConstrained") and .status == "True")) |
+      ([.conditions[]? | select((.type == "ProvisioningSuspended" or .type == "ProvisioningConstrained") and .status == "True")] | first) as $cond |
+      ($cond.lastTransitionTime // null) as $startedAt |
+      (if $startedAt != null then ([$startedAt | fromdateiso8601] | first // null) else null end) as $startEpoch |
+      ([$cond.message // "" | capture("until (?<until>[^.]+)").until] | first // null) as $untilRaw |
+      ([$cond.message // "" | capture("until (?<u_ts>[0-9-]+ [0-9:]+) UTC").u_ts + "Z" | sub(" "; "T") | fromdateiso8601] | first // null) as $untilEpoch |
       {
         identifier: .identifier,
         configHash: .configHash,
-        conditionType: ([.conditions[]? | select((.type == "ProvisioningSuspended" or .type == "ProvisioningConstrained") and .status == "True") | .type] | first // "ProvisioningSuspended"),
-        reason: ([.conditions[]? | select((.type == "ProvisioningSuspended" or .type == "ProvisioningConstrained") and .status == "True") | .reason] | first // "Unknown"),
-        message: ([.conditions[]? | select((.type == "ProvisioningSuspended" or .type == "ProvisioningConstrained") and .status == "True") | .message] | first // ""),
-        until: ([.conditions[]? | select((.type == "ProvisioningSuspended" or .type == "ProvisioningConstrained") and .status == "True") | .message | capture("until (?<until>[^.]+)").until] | first // null)
+        conditionType: ($cond.type // "ProvisioningSuspended"),
+        reason: ($cond.reason // "Unknown"),
+        message: ($cond.message // ""),
+        startedAt: $startedAt,
+        until: $untilRaw,
+        timerMode: (if $untilEpoch != null then "fixed_until" elif ($cond.reason // "") == "CapacityConstrained" then "dynamic_poll" else "unknown" end),
+        appliedSeconds: (if ($untilEpoch != null and $startEpoch != null) then (($untilEpoch - $startEpoch) | floor) else null end),
+        remainingSeconds: (if $untilEpoch != null then (($untilEpoch - $now) | if . < 0 then 0 else (. | floor) end) else null end)
       }
     ]
   ')
@@ -209,7 +219,8 @@ if [[ $(echo "$PRIORITY_STATUSES" | jq 'length') -gt 0 ]]; then
   ACTIVE_COUNT=$(echo "$ACTIVE_RULES" | jq 'length')
 
   EARLIEST_UNTIL=$(echo "$SUSPENDED_RULES" | jq -r '
-    [ .[] | select(.until != null) | .until ] | sort | first // "N/A"
+    [ .[] | select(.until != null) | .until ] | sort | first //
+    (if any(.[]; .timerMode == "dynamic_poll") then "Dynamic poll (every 10-20s; no fixed timer)" else "N/A" end)
   ')
 else
   # Pre-Rollout Live Inference Mode
@@ -354,11 +365,25 @@ if [[ "$SUSPENDED_COUNT" -gt 0 ]]; then
     RULE=$(echo "$SUSPENDED_RULES" | jq -c ".[$i]")
     R_ID=$(echo "$RULE" | jq -r '.identifier')
     R_REASON=$(echo "$RULE" | jq -r '.reason')
-    R_UNTIL=$(echo "$RULE" | jq -r '.until // "N/A"')
+    R_STARTED=$(echo "$RULE" | jq -r '.startedAt // "N/A"')
+    R_UNTIL=$(echo "$RULE" | jq -r 'if .until != null then .until elif .timerMode == "dynamic_poll" then "No fixed timer (re-polled every 10-20s)" else "N/A" end')
+    R_TIMING=$(echo "$RULE" | jq -r '
+      if .appliedSeconds != null and .remainingSeconds != null then
+        "applied=\((.appliedSeconds / 60) | floor)m (\(.appliedSeconds)s), remaining=\((.remainingSeconds / 60) | floor)m\(.remainingSeconds % 60)s"
+      elif .timerMode == "dynamic_poll" then
+        "dynamic capacity poll (10-20s refresh; no fixed local timer)"
+      else
+        ""
+      end
+    ')
     R_MSG=$(echo "$RULE" | jq -r '.message')
     echo "      • Priority [identifier: \"$R_ID\"]"
     echo "        Reason:        $R_REASON"
+    echo "        Started At:    $R_STARTED"
     echo "        Backoff Until: $R_UNTIL"
+    if [[ -n "$R_TIMING" ]]; then
+      echo "        Backoff Timer: $R_TIMING"
+    fi
     echo "        Detail:        $R_MSG"
   done
 fi

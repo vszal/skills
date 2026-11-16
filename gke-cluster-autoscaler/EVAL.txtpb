@@ -979,4 +979,28 @@ cases {
     "for 'min-nodes-fake-*' is working as intended (WAI) floor protection and "
     "not a broken PDB or stray system pod."
 }
+cases {
+  name: "ca_compute_class_backoff_remaining_logs"
+  prompt:
+    "During a stockout on GKE 1.36.4, Cluster Autoscaler visibility logs show "
+    "`no.scale.up.in.backoff` and `mig.in.backoff`, but our SREs cannot tell "
+    "how many minutes of backoff were applied or remain for each ComputeClass "
+    "priority rule, either live or after the incident. Where is that timing "
+    "exposed, and are there cases with no fixed timer?"
+  expectations:
+    "The response explains that `container.googleapis.com/cluster-autoscaler-visibility` "
+    "logs do not include per-priority backoff expiration timestamps, and "
+    "points to `ComputeClass` `status.priorityStatuses[].conditions[]` "
+    "(`ProvisioningSuspended` and `ProvisioningConstrained`) where `lastTransitionTime` "
+    "and `until YYYY-MM-DD HH:MM:SS UTC` determine applied and remaining backoff."
+  expectations:
+    "The response explains querying Cloud Audit Logs for "
+    "`protoPayload.methodName=\"com.google.cloud.v1.computeclasses.status\"` "
+    "to inspect historical backoff timestamps after live conditions clear."
+  expectations:
+    "The response notes that proactive `CapacityConstrained` conditions have "
+    "no fixed `until` timestamp because Compute Engine availability is "
+    "re-polled every 10-20 seconds, and spells out Cluster Autoscaler and "
+    "ComputeClass without forbidden acronyms."
+}
 

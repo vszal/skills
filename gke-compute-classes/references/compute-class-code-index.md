@@ -50,6 +50,18 @@ When verifying behavior or investigating edge cases, clone the repository or fet
 
 ---
 
+### 4. Observability, status conditions, and backoff timers
+
+| Behavior / Feature | Source File Path | Key Structs & Functions | Behavioral Notes |
+|---|---|---|---|
+| **Reactive priority & pool backoff conditions** | `pkg/computeclass/status/history/crd_backoff_observer.go` | `CrdBackoffObserver.OnNpcBackoff`, `OnBackoff`, `RemoveExpiredBackoffs`, `translateErrorCode` | Emits `ProvisioningSuspended` (full rule cooldown) and `ProvisioningConstrained` (partial/zonal cooldown; keeps `max(until)` across pools) with `lastTransitionTime` and `until YYYY-MM-DD HH:MM:SS MST` plus truncated GCE error text (commits `e116e4f7a9`, `a2a08ef243`). Clears conditions once `currentTime >= expirationTime`. |
+| **Composite `maxBackoffTime` across tiers** | `pkg/backoff/composite_backoff.go`, `pkg/backoff/gke_mig_backoff.go` | `unsynchronizedCompositeBackoff.Backoff`, `NewGkeBackoff` | Computes `maxBackoffTime` across 5m `npcCrdBackoff` and exponential `5m->10m->20m->30m` MIG, resource, NAP, subnet IP, and reservation backoffs before invoking `OnBackoff`. |
+| **Proactive Flex Advisor `CapacityConstrained`** | `pkg/flexadvisor/flexibility_scope_conditions.go`, `pkg/flexadvisor/flexadvisor.go` | `updateRuleFilteringConditions`, `ConditionReasonFilteredOut = "CapacityConstrained"` | Emits `ProvisioningSuspended` (`0/N available`) or `ProvisioningConstrained` (`M/N excluded`) with **no `until` timestamp**; availability snapshots refresh every `10s–20s`. |
+| **Active provisioning & status batch flush** | `pkg/computeclass/status/history/scale_up_status_history_processor.go`, `pkg/computeclass/status/aggregator.go` | `ScaleUpStatusHistoryProcessor.emitConditions`, `Aggregator.makeUpdates` | Emits `NodeProvisioningInProgress` (`PodPending`, `ActiveMigration`, `MinimumCapacity`, `CapacityBuffer`, etc.) and flushes status patches every `BatchFlushInterval = 30 * time.Second` (recorded in `com.google.cloud.v1.computeclasses.status` audit logs). |
+| **Visibility log `noScaleUp` schema** | `pkg/visibility/proto/events.proto`, `pkg/visibility/types/messages.go` | `NoScaleUpData`, `NoScaleUpInBackoff` | Emits `no.scale.up.in.backoff` and `mig.in.backoff` without priority indices or `until` timestamps. |
+
+---
+
 ## Code verification instructions
 
 When troubleshooting or investigating behavioral changes:

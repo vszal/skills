@@ -348,15 +348,12 @@ not block the user's initial request.** If asked for YAML/recommendations:
 -   **Sandboxed AI Agents — GKE Agent Sandbox (`gvisor`) vs. Agent Substrate (`microvm`):**
     -   *GKE Agent Sandbox (`extensions.agents.x-k8s.io/v1beta1`, GKE `1.36.3-gke.1767000+`, `--enable-agent-sandbox`)*: Declarative container sandboxing using `SandboxTemplate` + `SandboxWarmPool` (`replicas: N`) + `SandboxClaim`. Enforces `sandbox-core-policy` & `sandbox-hardening-policy` VAPs: strictly requires `runtimeClassName: gvisor|microvm`, `automountServiceAccountToken: false`, `securityContext.runAsNonRoot: true`, `capabilities.drop: ["ALL"]`, `allowPrivilegeEscalation: false`, no host namespaces/privileged/hostPath, >=1 GiB RAM per 1 vCPU, AND explicit `nodeSelector['sandbox.gke.io/runtime']: gvisor|microvm` + `NoSchedule` toleration alongside `cloud.google.com/compute-class: <NAME>`. (Contrast: on standard `Deployment`/`Pod` manifests outside `SandboxTemplate`, omit `sandbox.gke.io/runtime` from `nodeSelector` because `runtimeClassName` injects it automatically and GKE Warden warns against manual `sandbox.gke.io/runtime` nodeSelector). Asset: `assets/agent-sandbox-gvisor.yaml`.
     -   *Agent Substrate (`ate.dev/v1alpha1`, GKE Standard 1.37+)*: Sub-500ms memory snapshot/restore via `WorkerPool` + `ActorTemplate`. For hardware-isolated microVMs (`kata-clh` / Cloud Hypervisor via `/dev/kvm`), pair with a `sandbox.type: microvm` + `priorityDefaults.enableNestedVirtualization: true` ComputeClass and account for `microvm` `podFixed` overhead (`250m` CPU, `130Mi` memory) when sizing worker requests/limits. Asset: `assets/agent-substrate-microvm.yaml`.
--   **Observability & Diagnostics (GKE `1.36.4-gke.1391000+`):**
-    *   **`status.priorityStatuses[]` & Runtime Conditions:** In GKE `1.36.4-gke.1391000+`, GKE populates per-priority status under `status.priorityStatuses[]` with `identifier` (`"0"`, `"1"`, `"2"` matching 0-based `spec.priorities[]`, plus synthetic `"ScaleUpAnyway"` when `whenUnsatisfiable: ScaleUpAnyway` is set), `configHash` (SHA-256 rule fingerprint), `resourceInfo` (`cpu`, `memory`, `nvidia.com/gpu`, `google.com/tpu` with `currentCount`, `targetCount`, `currentUtilizationPercentage`), and `scalingEventsHistory` (`provisionedNodesCount`, `consolidatedNodesCount`, `migratedNodesCount`).
-        *   **Soft Stockout (`ProvisioningConstrained`):** Zonal/partial failure (`NodeProvisioning of the node pools associated with this priority failed due to the OutOfResources error. In backoff until YYYY-MM-DD HH:MM:SS UTC.`). Healthy zones remain active on this priority tier. Always mention running `assets/monitor-hard-stockouts.sh` to scan stockout conditions.
-        *   **Hard Stockout (`ProvisioningSuspended`):** Entire priority tier is in backoff across all shapes/zones (`NodeProvisioning associated with this priority failed due to the <Reason> error. Backing off the priority until YYYY-MM-DD HH:MM:SS UTC.`). When all priorities fail and `ScaleUpAnyway` is disabled/unavailable, top-level `status.conditions[]` sets `UnableToProvision`. Always reference `assets/monitor-hard-stockouts.sh [compute-class-name]` to scan for active suspended/constrained conditions and pending pods.
-        *   **Subnet Exhaustion (`IpSpaceExhausted`):** `NodeProvisioning associated with this priority failed due to IpSpaceExhausted error. Backing off the priority until YYYY-MM-DD HH:MM:SS UTC.`
-        *   **Minimum Capacity (`minimumCapacity.targetNodeCount`):** Proactive floor provisioning sets `MinCapacityProvisioning` (`reason: ProvisioningStarted`) and `MinCapacityProvisioned: True` (`reason: ProvisioningComplete`). **Always reference `assets/verify-minimum-capacity.sh <compute-class-name>`** to verify `MinCapacityProvisioned: True` and floor health. To protect the floor from scale-down, Cluster Autoscaler injects synthetic `min-nodes-fake-*` pods (`min-nodes-fake-0`) into scale-down simulations and emits `no.scale.down.node.no.place.to.move.pods` in CA Visibility Logs—this is **working as intended (WAI)** floor protection, NOT a pod eviction or PDB failure.
-    *   **Node Annotation Contract (`ccc_priority_index`):** Every node provisioned for a ComputeClass in `1.36.4-gke.1391000+` has `.metadata.annotations.ccc_priority_index` set to `"0"`, `"1"`, `"2"` (0-based rule index), `"ccc_scale_up_anyway"` (unconstrained E2 fallback from `ScaleUpAnyway`), `"ccc_no_rule_matching"`, or `"ccc_deleted"`. **Always reference `assets/trace-pod-scaleup.sh <pod-name> [namespace]`** and `references/compute-class-debug.md` to trace pod-to-node scale-up placement.
-    *   **Active Migration & Config Drift (`status.migration.configDrift`):** Tracks `currentNodes`, `driftedNodes`, and `blockedNodes[]` grouped by `reason` (`PodDisruptionBudget`, `BlockingPods`, `ReplacementUnavailable`, `MaxNodeDisruptionReached`).
-    *   **After-the-Fact Cloud Audit Logs:** Even after ephemeral nodes scale down to 0, query Cloud Audit Logs (`resource.type="k8s_cluster"`) for `protoPayload.methodName="com.google.cloud.v1.computeclasses.status"` (`protoPayload.resourceName:"cloud.google.com/v1/computeclasses/<NAME>"`) to inspect historical `protoPayload.request.status` snapshots, and `protoPayload.methodName="io.k8s.core.v1.nodes.create"` to inspect `protoPayload.request.metadata.annotations.ccc_priority_index`. For Cloud Monitoring `k8s_entity` metrics (`cluster_node_provisioning_failed_attempts_count_per_ccc`), defer to `gke-cluster-autoscaler` or see `references/compute-class-debug.md`.
+-   **Observability & Diagnostics (GKE `1.36.4-gke.1391000+` — read [`references/compute-class-observability.md`](./references/compute-class-observability.md) for schemas, `jq` countdowns, and SQL queries):**
+    *   **`status.priorityStatuses[]` & Backoff Timers:** Reports per-priority `identifier` (`"0"`, `"1"`, `"2"`; under `whenUnsatisfiable: ScaleUpAnyway`, adds implicit numeric rung `str(len(spec.priorities))` + synthetic `"ScaleUpAnyway"`), `configHash`, `resourceInfo[]`, and `scalingEventsHistory`.
+        *   **`ProvisioningConstrained` (Zonal / Partial)** vs. **`ProvisioningSuspended` (Full Tier; sets class `UnableToProvision` if all fail):** Reactive failures (`OutOfResources`, `QuotaExceeded`, `IpSpaceExhausted`, `ReservationCapacityExceeded`) embed `until YYYY-MM-DD HH:MM:SS UTC` (`applied = until - lastTransitionTime`, `remaining = until - now`; multi-zone `ProvisioningConstrained` reports `max(until)`). Proactive `reason: CapacityConstrained` re-polls Compute Engine availability every `10–20s` with **no `until` timestamp**. Run `assets/monitor-hard-stockouts.sh --ccc <name>`.
+        *   **Minimum Capacity (`minimumCapacity.targetNodeCount`):** Sets `MinCapacityProvisioning` -> `MinCapacityProvisioned: True` (`reason: ProvisioningComplete`); `min-nodes-fake-*` (`min-nodes-fake-0`) with `no.scale.down.node.no.place.to.move.pods` in visibility logs is **working as intended (WAI)** floor protection. Run `assets/verify-minimum-capacity.sh <name>`.
+    *   **Node Annotation (`ccc_priority_index`, GKE `1.33.13+`):** Stamped ~60s post-create (`"0"`, `"1"`, `"ccc_scale_up_anyway"`, `"ccc_no_rule_matching"`, `"ccc_deleted"`). Run `assets/trace-pod-scaleup.sh <pod-name> [namespace]`.
+    *   **Config Drift & Audit Logs:** Check `status.migration.configDrift` (`currentNodes`, `driftedNodes`, `migratingNodes`, `blockedNodes[]` by `PodDisruptionBudget`, `BlockingPods`, `ReplacementUnavailable`, `MaxNodeDisruptionReached`). `cluster-autoscaler-visibility` logs omit backoff timers; query Cloud Audit Logs for `protoPayload.methodName="com.google.cloud.v1.computeclasses.status"` (`protoPayload.request.status`) and `nodes.patch`/`nodes.update` (or `nodes.create` for initial labels) after nodes scale down.
 
 --------------------------------------------------------------------------------
 
@@ -403,11 +400,16 @@ spec:
     DWS limitations, Disk Generation traps, `AnyBestEffort`.
 -   **[Karpenter Migration](./references/compute-class-karpenter-migration.md):**
     Translating EKS Karpenter NodePools.
--   **[Debugging & Observability Guide](./references/compute-class-debug.md):**
+-   **[Observability, Status & Backoff Forensics](./references/compute-class-observability.md):**
     GKE `1.36.4-gke.1391000+` `status.priorityStatuses[]`, `ccc_priority_index`,
     soft (`ProvisioningConstrained`) vs. hard (`ProvisioningSuspended`) stockouts,
-    Cloud Audit Log forensics (`computeclasses.status`), `minimumCapacity` floor
-    protection, GPU tolerations, `ScaleUpAnyway` traps, and PV deadlocks.
+    `CapacityConstrained` dynamic polling, live `jq` backoff-remaining countdowns,
+    Cloud Audit Log / Log Analytics SQL forensics (`computeclasses.status`),
+    `status.migration.configDrift`, and `minimumCapacity` (`min-nodes-fake-*`).
+-   **[Symptom Troubleshooting Runbook](./references/compute-class-debug.md):**
+    Symptom-by-symptom fixes for GPU tolerations, `ScaleUpAnyway` E2 fallback,
+    active migration blockers and custom-label thrash, reservation bypass, and PV
+    deadlocks.
 -   **[Autopilot Mode on Standard](./references/compute-class-autopilot-mode.md):**
     Built-in `autopilot`/`autopilot-spot`, pod-based billing,
     `spec.autopilot.enabled`, privileged limits.
@@ -427,9 +429,10 @@ spec:
     `nodeSelector`, `status.priorityStatuses[]`, CA visibility logs, and node
     `ccc_priority_index` annotation).
 -   **Hard Stockout Detector (`1.36.4-gke.1391000+`):**
-    `assets/monitor-hard-stockouts.sh [compute-class-name]` (detects active
-    `ProvisioningSuspended`, `ProvisioningConstrained`, and `IpSpaceExhausted`
-    conditions, UTC backoff windows, and stuck `Pending` pods).
+    `assets/monitor-hard-stockouts.sh --ccc <compute-class-name>` (detects active
+    `ProvisioningSuspended` and `ProvisioningConstrained` conditions—including
+    `IpSpaceExhausted` and `CapacityConstrained` reasons—computes applied and
+    remaining UTC backoff windows, and lists stuck `Pending` pods).
 -   **Minimum Capacity Floor Verifier (`1.36.4-gke.1391000+`):**
     `assets/verify-minimum-capacity.sh <compute-class-name>` (verifies
     `minimumCapacity.targetNodeCount`, `MinCapacityProvisioned: True`, and
