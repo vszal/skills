@@ -392,19 +392,27 @@ cases {
     "is still unused and we are being charged full On-Demand rates. What is "
     "wrong?"
   expectations:
-    "The response explains that unlike CUDs, capacity reservations are NOT "
-    "automatically consumed by the cluster autoscaler."
+    "The response distinguishes Specific reservations (`specificReservationRequired: "
+    "true` / `--require-specific-reservation`), which are NEVER auto-consumed by "
+    "default node pool affinity, from automatically consumed (open) reservations "
+    "(`specificReservationRequired: false`), which Standard GKE default `any` "
+    "(`ANY_RESERVATION`) affinity DOES consume only when every property "
+    "(`machineType`, exact `zone`, `minCpuPlatform`, GPU type/count, local SSDs, "
+    "no compact placement policy, non-Spot) matches identically (whereas Autopilot "
+    "defaults omitted affinity to `NO_RESERVATION`)."
   expectations:
-    "The response states that reservations must be explicitly targeted via the "
-    "ComputeClass `reservations` block (for node pool auto-creation) or the "
-    "Node Pool API (for manual pools)."
+    "The response explains why even an open zonal C3 reservation can remain "
+    "unused during scale-up (e.g., regional scale-up landing in another zone, "
+    "`machineFamily` picking a different C3 machine shape, `minCpuPlatform`/local "
+    "SSD/Spot mismatch, or 30-minute reservation cache lag on newly created reservations)."
   expectations:
-    "The response suggests using 'AnyThenFail' (GKE 1.36.0-gke.3204000+) or "
-    "'Specific' affinity when targeting reservations via ComputeClass to "
-    "preserve fallback behavior."
+    "The response recommends explicitly targeting the reservation via a "
+    "ComputeClass `reservations` block (`Specific` or `AnyThenFail` on GKE "
+    "1.36.0-gke.3204000+ rather than `AnyBestEffort` to preserve fallback "
+    "priorities) or the Node Pool API (`--reservation-affinity=specific`)."
   expectations:
-    "The response contrasts this with CUDs, which ARE automatically consumed "
-    "when the autoscaler provisions matching machine families."
+    "The response contrasts this with CUDs, which automatically apply across the "
+    "machine family in the region with no shape, zone, or node pool configuration."
 }
 cases {
   name: "ca_daemonset_scale_down"

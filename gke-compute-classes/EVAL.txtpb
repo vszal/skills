@@ -1509,4 +1509,34 @@ cases {
     "Compute Engine availability every 10-20 seconds rather than setting a "
     "fixed local backoff timer, so no `until` timestamp is emitted."
 }
+cases {
+  name: "gke_compute_class_automatic_vs_specific_reservation_binding"
+  prompt:
+    "We have existing running On-Demand GKE Standard nodes created by a "
+    "ComputeClass (`nodePoolAutoCreation.enabled: true`) that only sets "
+    "`machineFamily: n4` (no `reservations` block). If we create a new GCE "
+    "reservation today, will our running GKE nodes and future scale-ups "
+    "automatically bind to it without recreating nodes or editing the "
+    "ComputeClass, or do we have to specify `reservations` in the ComputeClass?"
+  expectations:
+    "The response explains that omitting `reservations` on a Standard (non-Autopilot) "
+    "ComputeClass leaves node pool reservation affinity unset (Compute Engine default "
+    "`any` / `ANY_RESERVATION`), so an automatically consumed (open) reservation "
+    "(`specificReservationRequired: false`) DOES automatically bind in place to "
+    "matching running On-Demand GKE nodes and future scale-ups without recreating "
+    "nodes, provided every property (`machineType`, exact `zone`, `minCpuPlatform`, "
+    "GPU type/count, local SSDs, no compact placement policy, non-Spot) matches identically."
+  expectations:
+    "The response explains that Specific reservations (`specificReservationRequired: "
+    "true`) NEVER bind to nodes with default/unset affinity, and because node "
+    "pool reservation affinity is immutable, attaching running nodes to a "
+    "Specific reservation requires setting `reservations.affinity: Specific` "
+    "(`specific[]`) and recreating/migrating the nodes."
+  expectations:
+    "The response warns that under an untargeted `machineFamily: n4` rule, "
+    "future scale-ups may pick a different `n4` shape or regional zone than an "
+    "open zonal reservation, and once an open reservation fills, GCE falls back "
+    "to unreserved On-Demand `n4` in place unless `reservations.affinity: "
+    "AnyThenFail` (GKE 1.36.0-gke.3204000+) or `Specific` is configured."
+}
 

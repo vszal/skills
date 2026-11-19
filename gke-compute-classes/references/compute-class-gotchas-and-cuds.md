@@ -48,11 +48,9 @@
     -   **Flexible CUDs (FlexCUDs):** Portable across most families (C3, N2,
         N4). The discount follows whichever family the ComputeClass provisions
         for the On-Demand floor.
--   **Reservations:**
-    -   **Explicit Configuration Required:** Unlike CUDs, capacity reservations
-        are **not** automatically consumed. They must be explicitly configured
-        and targeted via the Node Pool API (for manual pools) or within the
-        ComputeClass `reservations` block (for node pool auto-creation).
+-   **Reservations (Open `any` vs. `Specific`):**
+    -   **Open / Automatically Consumed (`specificReservationRequired: false` — binds running Standard VMs in place, NO node recreation):** Omitting `reservations:` on a **Standard (non-Autopilot)** ComputeClass leaves node pool reservation affinity unset (Compute Engine default `any` / `ANY_RESERVATION`; on Autopilot or `spec.autopilot.enabled: true`, omitted non-TPU `reservations:` defaults to `NO_RESERVATION` unless `AnyBestEffort`/`AnyThenFail` is set). Compute Engine automatically binds **both existing running Standard On-Demand GKE nodes in place (zero node recreation/drain)** and future scale-ups **only when every property matches identically** (always enumerate `specificReservationRequired: false` + all properties in responses): `machineType`, exact `zone`, `minCpuPlatform`, `GPU type/count`, `local SSDs`, `no compact placement policy` (compact placement requires `Specific` reservations), and `non-Spot` provisioning (Spot VMs never bind). **Caveats under `machineFamily`:** (1) untargeted `machineFamily` scale-ups may choose a different shape or regional zone than an open zonal reservation; (2) once an open reservation fills, GCE falls back to unreserved On-Demand in place instead of stepping down `priorities[]` unless `reservations.affinity: AnyThenFail` (GKE `1.36.0-gke.3204000+`) or `Specific` is configured.
+    -   **Specific (`specificReservationRequired: true` — explicit block + node recreation required):** **Never** binds to nodes with default/unset (`any`) affinity. Because node pool reservation affinity is immutable on existing GCE Instance Templates, moving running nodes onto a Specific reservation requires configuring `reservations.affinity: Specific` + `specific[]` (or `--reservation-affinity=specific` on manual pools) and recreating/migrating the nodes.
 
 ## System configuration allowlist
 
