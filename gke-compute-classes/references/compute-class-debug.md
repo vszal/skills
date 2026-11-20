@@ -91,7 +91,7 @@ Check `status.priorityStatuses[]` (`./assets/monitor-hard-stockouts.sh --ccc <na
 ## Symptom 6: ImageType fragmentation bug (pre-1.33.5)
 
 - **Symptom:** Autoscaler creates hundreds of tiny, fragmented node pools.
-- **Cause:** Explicitly defining `imageType: UBUNTU_CONTAINERD` (or COS) on versions older than `1.33.5-gke.1862000` (and `1.34.1-gke.2541000`).
+- **Cause:** Explicitly defining `imageType` (`ubuntu_containerd` or `cos_containerd`) on versions older than `1.33.5-gke.1862000` (and `1.34.1-gke.2541000`).
 - **Fix:** Upgrade cluster or temporarily remove `imageType`.
 
 ---
@@ -125,7 +125,7 @@ Check `status.priorityStatuses[]` (`./assets/monitor-hard-stockouts.sh --ccc <na
 
 ## Symptom 11: List loops / backoff
 
-- **Cause:** More than 10 priorities (especially manual `priorities[].nodepools`). Unobtainable pools enter a 5-minute cooldown, and long lists expire upper-tier cooldowns before reaching the bottom, causing an infinite loop.
+- **Cause:** A long priority list (more than about 10 rules; keep ladders to 6–8, especially manual `priorities[].nodepools`). Unobtainable pools enter a 5-minute cooldown, and long lists expire upper-tier cooldowns before reaching the bottom, causing an infinite loop.
 - **Fix:** Trim redundant rules and prefer `machineFamily` with `nodePoolAutoCreation.enabled: true` (which benefits from ComputeClass cumulative cooldown prolongation).
 
 ---

@@ -5,11 +5,11 @@
 - [Minimal shape](#minimal-shape): Lines 16-28
 - [Top-level spec fields](#top-level-spec-fields): Lines 29-75
 - [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 76-90
-- [`priorities[]` fields](#priorities-fields): Lines 91-156
-- [Important schema constraints](#important-schema-constraints): Lines 157-189
-- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 190-219
-- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 220-260
-- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 261-266
+- [`priorities[]` fields](#priorities-fields): Lines 91-158
+- [Important schema constraints](#important-schema-constraints): Lines 159-191
+- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 192-221
+- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 222-262
+- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 263-268
 
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
@@ -92,11 +92,13 @@ Applied to pools created by the autoscaler.
 
 -   `machineFamily` / `machineType`: Intent vs. strict. Prefer family.
 -   `enableNestedVirtualization`: Boolean (GKE 1.37.0+). Configurable per-priority or globally in `priorityDefaults`. Strictly required by OpenAPI CEL when `sandbox.type: microvm`. Supported on Intel Haswell+ (`n4`, `c4`, `c3`, `n2`, `c2`) and AMD `n4d`; rejected on `e2`, Arm, memory-optimized, or `-metal`.
--   `priorityScore`: Int 1–1000, **higher = more preferred** (GKE 1.35.2+;
-    absent from the CRD on 1.34.10 and earlier). Overrides list position as the
-    ordering mechanism. If **any** rule has a score, **all** must. Max **3 rules
-    per score**; tied rules are evaluated together and lowest unit cost wins.
-    See [prioritization](./compute-class-prioritization.md).
+-   `priorityScore`: Int 1–1000, **higher = more preferred** (GKE
+    1.35.2-gke.1842000+; absent from the CRD on 1.34.10 and earlier). Overrides
+    list position as the ordering mechanism. If **any** rule has a score,
+    **all** must. Max **3 rules per score**; tied rules are evaluated together
+    by the autoscaler expander (lowest unit cost wins, with random tie-breaking
+    when costs are equal — no round-robin guarantee). See
+    [prioritization](./compute-class-prioritization.md).
     -   **Observability trap:** the `ccc_priority_index` node annotation records
         the rule's **list index, not its score rank** (verified on 1.36.4 with a
         deliberately inverted class: the highest-scoring rule, listed last, was
@@ -166,9 +168,9 @@ Applied to pools created by the autoscaler.
     config. All four are real on 1.36.4 (`spec.description` round-trips through
     `kubectl apply --dry-run=server`):
     -   `spec.description` — present since **1.33**.
-    -   `spec.nodePoolConfig.gvnic` — present since **1.34**.
-    -   `spec.priorities[].nodeSystemConfig.linuxNodeConfig.transparentHugepageEnabled`
-    -   `spec.priorities[].nodeSystemConfig.kubeletConfig.shutdownGracePeriodSeconds`
+    -   `spec.nodePoolConfig.gvnic` (`{enabled: true}`) — present since **1.34.1-gke.3759000+**.
+    -   `spec.priorities[].nodeSystemConfig.linuxNodeConfig.transparentHugepageEnabled` — present since **1.34.1-gke.3084001+**.
+    -   `spec.priorities[].nodeSystemConfig.kubeletConfig.shutdownGracePeriodSeconds` (`0 | 30 | 120`, **Spot priorities only — CEL-enforced**) — present since **1.36.0-gke.3204000+**.
         (`nodeSystemConfig` itself does not exist before 1.32.)
     -   All four are absent on **1.31.14**. Check the cluster in front of you
         rather than trusting any static list:

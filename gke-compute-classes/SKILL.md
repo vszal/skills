@@ -53,9 +53,14 @@ not block the user's initial request.** If asked for YAML/recommendations:
         near the `machineFamily` field: `# IMPORTANT: Align machineFamily with
         your existing CUDs/Reservations`.
     *   **MUST label initial YAML as `EXAMPLE TEMPLATE - DO NOT DEPLOY`.**
-    *   **STRICT SCHEMA RULE:** NEVER hallucinate fields. Do NOT use
-        `spec.description`, `gvnic`, `transparentHugepageEnabled`, or
-        `shutdownGracePeriodSeconds`. Use `bootDiskSize` (NOT `bootDiskSizeGb`).
+    *   **STRICT SCHEMA RULE:** NEVER hallucinate fields. Use `bootDiskSize`
+        (NOT `bootDiskSizeGb`, which does not exist). Check GKE version gates
+        before emitting newer CRD fields: `spec.description` (1.33+),
+        `spec.nodePoolConfig.gvnic` (`{enabled: true}`, 1.34.1-gke.3759000+),
+        `priorities[].nodeSystemConfig.linuxNodeConfig.transparentHugepageEnabled`
+        (1.34.1-gke.3084001+), and
+        `priorities[].nodeSystemConfig.kubeletConfig.shutdownGracePeriodSeconds`
+        (`0 | 30 | 120`, 1.36.0-gke.3204000+, Spot priorities only — CEL-enforced).
     *   **YAML FORMATTING RULE:** NEVER quote integer or boolean values (e.g.,
         use `bootDiskSize: 50`, not `bootDiskSize: "50"`). `imageType` MUST be
         lowercase.
@@ -126,10 +131,11 @@ not block the user's initial request.** If asked for YAML/recommendations:
         `system-highmem`, `worker-spot`) so each workload's preferred tier is at
         Priority 0.
     *   **CRITICAL PRIORITYSCORE RULE:** A shared `priorityScore` makes one
-        tie-break tier (lowest unit cost wins), but applies to a MAXIMUM of 3
-        rules. NEVER emit more than 3 priorities at the same score; if the user
-        asks for more (e.g. 5 families "all cheapest-available"), cap at 3 and
-        say why.
+        tie-break tier (lowest unit cost wins via the autoscaler expander, with
+        random tie-breaking when costs are equal — no round-robin guarantee),
+        but applies to a MAXIMUM of 3 rules. NEVER emit more than 3 priorities
+        at the same score; if the user asks for more (e.g. 5 families "all
+        cheapest-available"), cap at 3 and say why.
     *   **CRITICAL STATEFUL RULE:** For PV workloads, do NOT mix Gen 2 (PD) and
         Gen 4 (Hyperdisk) in `priorities[]` (attach failures). **Exception (GKE
         1.35.3-gke.1290000+):** back data PVs with the built-in
@@ -233,7 +239,8 @@ not block the user's initial request.** If asked for YAML/recommendations:
     list carries **one entry per zonal reservation** (3 zones → 3 `specific[]`
     entries, each with its own `name` + `zones`). Don't split zones into
     separate priorities, and don't collapse them into one entry. Needs **no
-    `priorityScore`** (GKE 1.35.2+). Asset:
+    `priorityScore`** (which itself requires GKE 1.35.2-gke.1842000+). Asset:
+    `balanced-reserved-zonal-compute-class.yaml`.
 -   **Stockout cooldown cascade — fallback laddering & stateful isolation:**
     -   *Cooldown Scope*: In GKE versions prior to `1.36.3-gke.1244000`, a hard zonal stockout (`out_of_resources` / `ZONE_RESOURCE_POOL_EXHAUSTED`) on a priority tier trips a ~5-minute **regional** cooldown on that whole tier across all zones. Starting in GKE `1.36.3-gke.1244000+`, stockout cooldowns are strictly **zonal**, keeping healthy zones active on preferred tiers (quota errors remain regional).
     -   *Cascade Mechanism*: Cascades to the bottom tier occur when **zonally constrained workloads** (pods bound to a zonal PV or rigid zonal `nodeSelector`/affinity) demand capacity in a stocked-out zone, forcing evaluation down the fallback ladder and tripping the 5-minute cooldown.
@@ -256,8 +263,8 @@ not block the user's initial request.** If asked for YAML/recommendations:
     -   *Prescription*: Label-based sub-selection inside a shared ComputeClass is only safe when `activeMigration.optimizeRulePriority: false`. To enable `activeMigration.optimizeRulePriority: true`, split into **distinct ComputeClasses per workload compute/lifecycle profile** so each workload's preferred tier is at Priority 0 (`ccc_priority_index: "0"`), and pods select only `cloud.google.com/compute-class: <NAME>`.
 -   **Fallback Ladder & Standby Headroom Best Practices (`machineFamily` vs `nodepools` & `CapacityBuffer`):**
     -   *Prefer `machineFamily` over `priorities[].nodepools`*: Rules referencing manual node pools do not benefit from ComputeClass cooldown prolongation and rely solely on standard 5-minute GCE MIG backoffs. Sprawling manual pool lists (>6–8 pools) cause early MIG backoffs to expire before lower rungs are evaluated, bouncing the autoscaler back to the top in an infinite loop. Use `machineFamily` with `nodePoolAutoCreation.enabled: true`.
-    -   *Place `flexStart: true` at the very end*: Dynamic Workload Scheduler (DWS) queuing takes 3–15+ minutes to return stockout signals; placing `flexStart` higher in the ladder allows earlier backoffs to expire during the wait and resets the autoscaler to the top.
-    -   *Avoid `min-nodes` on fallback pools (Scheduler Bypass)*: `kube-scheduler` assigns incoming pods to idle nodes held by `min-nodes` *before* Cluster Autoscaler evaluates ComputeClass priorities. If fallback pools have `min-nodes > 0`, pods land on fallback hardware permanently, bypassing preferred tiers. Set `min-nodes: 0` and use `CapacityBuffer` (`buffer.x-k8s.io`).
+    -   *Place the `flexStart` rule (`flexStart: {enabled: true}`) after every other non-preemptible tier; only a Spot last resort may follow it (e.g. `Reservations -> On-Demand -> DWS FlexStart -> Spot`)*: Dynamic Workload Scheduler (DWS) queuing takes 3–15+ minutes to return stockout signals; placing `flexStart` higher in the ladder allows earlier backoffs to expire during the wait and resets the autoscaler to the top.
+    -   *Avoid `min-nodes` on fallback pools (Scheduler Bypass)*: `kube-scheduler` assigns incoming pods to idle nodes held by `min-nodes` *before* Cluster Autoscaler evaluates ComputeClass priorities. If fallback pools have `min-nodes > 0`, pods land on fallback hardware permanently, bypassing preferred tiers. Set `min-nodes: 0` and use `CapacityBuffer` (`autoscaling.x-k8s.io`).
     -   *GKE 1.36+ Synchronous Obtainability*: Starting in GKE 1.36, Cluster Autoscaler checks internal capacity obtainability synchronously in memory before creating VMs, skipping exhausted families without tripping GCE API errors or backoff cooldowns. Note: `gcloud beta compute advice capacity` is a discrete Spot/Flex heuristic (0.1, 0.5, 0.9); Google does not expose public real-time on-demand APIs.
 -   **Stateful PV StorageClass — recommend `dynamic-rwo`:** GKE
     1.35.3-gke.1290000+. Back stateful data PVs with built-in **`dynamic-rwo`**
@@ -333,7 +340,7 @@ not block the user's initial request.** If asked for YAML/recommendations:
     **`spec.autopilot.enabled: true`** on a *custom* ComputeClass. **Billing
     follows the priority rule, not pod size:** a `podFamily` rule stays
     **pod-based** (GKE 1.35.2-gke.1485000+); a hardware rule
-    (`machineFamily`/`machineType`/`gpus`) is **node-based**. **Privileged /
+    (`machineFamily`/`machineType`/`gpu`) is **node-based**. **Privileged /
     hostNetwork / hostPath workloads are rejected** by Autopilot's user-space
     admission — keep those on a node-based class. Ref:
     `compute-class-autopilot-mode.md`.

@@ -2,9 +2,9 @@
 
 ## Table of contents
 
-- [Aligning with Committed Use Discounts (CUDs)](#aligning-with-committed-use-discounts-cuds): Lines 9-62
-- [Active migration for cost](#active-migration-for-cost): Lines 63-82
-- [Balanced HA scale-up across zones](#balanced-ha-scale-up-across-zones): Lines 83-118
+- [Aligning with Committed Use Discounts (CUDs)](#aligning-with-committed-use-discounts-cuds): Lines 9-63
+- [Active migration for cost](#active-migration-for-cost): Lines 64-85
+- [Balanced HA scale-up across zones](#balanced-ha-scale-up-across-zones): Lines 86-124
 
 ## Aligning with Committed Use Discounts (CUDs)
 
@@ -57,6 +57,7 @@ require specialized hardware:
   # 2. Fallback to On-Demand covered by FlexCUD
   - machineFamily: n4
     spot: false
+    priorityScore: 50  # if any rule sets priorityScore, every rule must
     # Assume N4 is covered by our regional FlexCUD commit
 ```
 
@@ -76,7 +77,9 @@ cost-effective nodes as capacity becomes available.
 -   **Throttling Vol. Disruptions:** Active migration honors Pod Disruption
     Budgets (PDBs). Use PDBs to throttle eviction rates. To stop active
     migration for specific pods, add the
-    `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` annotation.
+    `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` annotation
+    (adding it to a Deployment's pod template triggers a rolling restart; a PDB
+    applies without one — see `compute-class-lifecycle.md`).
 -   **WARNING:** PDBs and `safe-to-evict` only block *voluntary* scaler actions.
     They **cannot** block *involuntary* Spot VM preemptions.
 
@@ -111,8 +114,11 @@ pre-1.35.2):**
     reservations; the `location` block keeps `locationPolicy` only.
 -   Asset: `balanced-reserved-zonal-compute-class.yaml`.
 
-**Method B — equal `priorityScore` round-robin (GKE 1.35.2-gke.1842000+):**
+**Method B — equal `priorityScore` (GKE 1.35.2-gke.1842000+; not balanced):**
 
 -   Define separate per-zone priority rules and assign them an **equal
     `priorityScore`** (max 3 rules/score).
--   GKE evaluates them together and round-robins for rough balance.
+-   GKE evaluates them together via the autoscaler expander (lowest cost wins,
+    with random tie-breaking when costs are equal). This is not round-robin and
+    does not guarantee an even zonal spread; use Method A (plus pod
+    `topologySpreadConstraints`) when balance matters.

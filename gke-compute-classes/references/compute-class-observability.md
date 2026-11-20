@@ -199,7 +199,7 @@ A hard stockout occurs when all priority rules fail simultaneously under `whenUn
    '
    ```
    - `until` reflects `maxBackoffTime` across the 5m rule cooldown (plus cumulative prolongation across failing rungs) and exponential `5m -> 10m -> 20m -> 30m` MIG, resource, subnet IP, and reservation backoffs (including manual `priorities[].nodepools`).
-   - **Operational boundaries**: (a) `reason: CapacityConstrained` re-polls Compute Engine availability every `10–20s` and emits no `until` timestamp; (b) multi-zone `ProvisioningConstrained` reports `max(until)`; (c) DWS (`flexStart: true`) can queue up to 15m *before* failing—diff `NodeProvisioningInProgress.lastTransitionTime` against `ProvisioningSuspended.lastTransitionTime` in audit logs to isolate queue latency.
+   - **Operational boundaries**: (a) `reason: CapacityConstrained` re-polls Compute Engine availability every `10–20s` and emits no `until` timestamp; (b) multi-zone `ProvisioningConstrained` reports `max(until)`; (c) DWS (`flexStart: {enabled: true}`) can queue up to 15m *before* failing—diff `NodeProvisioningInProgress.lastTransitionTime` against `ProvisioningSuspended.lastTransitionTime` in audit logs to isolate queue latency.
 
 2. **Query historical backoff durations in Cloud Logging (Log Analytics SQL):**
    ```sql

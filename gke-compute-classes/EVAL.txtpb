@@ -174,7 +174,7 @@ cases {
     "our Spot rule. Why isn't the fallback working?"
   expectations:
     "The response asks or identifies if the reservation affinity is set to "
-    "'AnyBestEffort' or 'Automatic'."
+    "'AnyBestEffort'."
   expectations:
     "The response explains that 'AnyBestEffort' consumes standard On-Demand "
     "capacity before allowing ComputeClass to evaluate lower priorities."
@@ -191,17 +191,26 @@ cases {
     "reservations. How do we configure the ComputeClass priorities to achieve "
     "roughly equal zonal distribution?"
   expectations:
-    "The response suggests that since reservations are zonal, we need a way to "
-    "represent each zonal reservation in the balance."
+    "The response explains that since reservations are zonal, each zone's "
+    "reservation must be represented explicitly (not collapsed into a single "
+    "unnamed reservation or placed in sequential per-zone priorities without "
+    "scoring, which drains zone-a first)."
   expectations:
-    "The response suggests defining separate priority rules for each zone or "
-    "using separate zonal node pools."
+    "The response recommends placing all three zonal reservations as separate "
+    "'reservations.specific[]' entries inside a single priority rule with "
+    "'location.locationPolicy: BALANCED' (and/or discusses separate per-zone "
+    "priorities with equal 'priorityScore' on GKE 1.35.2-gke.1842000+, max 3 "
+    "per score)."
   expectations:
-    "The response specifies assigning equal 'priorityScore' to all of the "
-    "zonal priority rules."
+    "If mentioning equal 'priorityScore', the response accurately notes that "
+    "GKE evaluates tied rules together via the autoscaler expander (lowest "
+    "cost, random tie-break on equal cost) and does NOT guarantee round-robin "
+    "zonal balance."
   expectations:
-    "The response explains that equal scores allow GKE to achieve roughly "
-    "balanced scale up via round-robin selection."
+    "The response notes that ComputeClass 'BALANCED' balances nodes "
+    "(infrastructure), while even pod distribution requires pod-level "
+    "'topologySpreadConstraints' (or recommends 'locationPolicy: BALANCED' "
+    "when balanced node spread matters)."
 }
 cases {
   name: "gke_compute_class_balanced_reserved_no_priorityscore"
@@ -819,7 +828,7 @@ cases {
     "(per-pod-request) billing."
   expectations:
     "The response explains that a hardware priority rule ('machineFamily', "
-    "'machineType', or 'gpus') yields node-based billing."
+    "'machineType', or 'gpu') yields node-based billing."
   expectations:
     "The response makes clear that billing is determined by the rule type, not "
     "by pod vCPU size, and does NOT claim that custom Autopilot classes are "
@@ -1068,9 +1077,10 @@ cases {
     "backoffs for other priorities expire, causing Cluster Autoscaler to reset "
     "and retry from the top of the priority list."
   expectations:
-    "The response recommends placing 'flexStart: true' priorities at the very "
-    "end of the priorities list so faster-feedback provisioning models are "
-    "evaluated first."
+    "The response recommends placing 'flexStart: {enabled: true}' priorities "
+    "after every other non-preemptible tier (near or at the end of the "
+    "priorities list, with at most a Spot last resort after it) so "
+    "faster-feedback provisioning models are evaluated first."
 }
 cases {
   name: "gke_compute_class_min_nodes_fallback_bypass"
@@ -1213,7 +1223,8 @@ cases {
   prompt: "Is gVNIC supported in GKE ComputeClasses and how do I enable it?"
   expectations:
     "The response confirms that gVNIC is supported under "
-    "'nodePoolConfig.networking.gvnic' or 'networking.gvnic'."
+    "'spec.nodePoolConfig.gvnic' (or 'nodePoolConfig.gvnic', with "
+    "'enabled: true' on GKE 1.34.1-gke.3759000+)."
   expectations: "The response does not classify gVNIC as an invalid field or hallucination."
 }
 cases {

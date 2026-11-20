@@ -4,8 +4,8 @@
 
 -   **Sequential:** Evaluated top-to-bottom. Unobtainable shapes enter a **5-minute cooldown**. Keep priority lists compact (aim for ≤6–8 rungs).
 -   **Tie-break (No Score):** Top entry wins. If multiple shapes match one rule, lowest unit cost wins.
--   **Tie-break (`priorityScore`):** Int 1–1000 (Higher = Preferred). If one rule has a score, **all** must. Max **3 rules per score**. Tied rules evaluated together; lowest cost wins. (GKE 1.35.2+).
--   **Equal-Score Zonal Balancing (Round-Robin)**: Since GKE reservations are zonal, to achieve balanced scale-up across multiple zones (e.g., `us-central1-a`, `b`, and `c`), you can define separate priority rules for each zone and assign them the **exact same `priorityScore`**. GKE will evaluate these tied zonal rules together, performing a round-robin selection to achieve roughly equal zonal distribution of nodes. Note that this requires using specific reservation names per zone.
+-   **Tie-break (`priorityScore`):** Int 1–1000 (Higher = Preferred). If one rule has a score, **all** must. Max **3 rules per score**. Tied rules are evaluated together by the autoscaler expander (lowest cost wins, with random tie-breaking when costs are equal — no round-robin guarantee). (GKE 1.35.2-gke.1842000+).
+-   **Equal-Score Zonal Rules**: Since GKE reservations are zonal, you can define separate priority rules for each zone (e.g., `us-central1-a`, `b`, and `c`) and assign them the **exact same `priorityScore`**. GKE evaluates these tied rules together via the autoscaler expander (lowest cost, random tie-break on equal cost); this is not round-robin and does not guarantee an even zonal distribution. For balanced scale-up across zonal reservations, use one priority with one `reservations.specific[]` entry per zone and `locationPolicy: BALANCED` paired with pod `topologySpreadConstraints` (see `compute-class-cost-optimization.md`, Method A).
 
 ## Cooldown & fallback mechanics in practice
 
@@ -27,7 +27,7 @@
 -   **`flexStart` Ordering Rule**:
     -   DWS Flex Start priorities use queued capacity provisioning, which takes 3–15+ minutes to return a stockout signal.
     -   If placed high or middle in `priorities[]`, higher-tier backoffs expire during the queue wait, resetting Cluster Autoscaler to the top of the ladder.
-    -   *Best Practice*: Always place `flexStart: true` at the **very end** of `priorities[]`.
+    -   *Best Practice*: Place the `flexStart` rule (`flexStart: {enabled: true}`) after every other non-preemptible tier; only a Spot last resort may follow it (see the Inference and Prod Training rows below).
 -   **`min-nodes` Interaction with Scheduler**:
     -   `kube-scheduler` places incoming pods on existing idle capacity (held warm by `min-nodes`) *before* Cluster Autoscaler evaluates ComputeClass priorities.
     -   If lower-priority manual pools have idle capacity due to high `min-nodes`, pods immediately schedule onto those lower-priority nodes, bypassing preferred ComputeClass tiers entirely.
