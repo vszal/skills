@@ -4,7 +4,7 @@
 
 - [Aligning with Committed Use Discounts (CUDs)](#aligning-with-committed-use-discounts-cuds): Lines 9-63
 - [Active migration for cost](#active-migration-for-cost): Lines 64-85
-- [Balanced HA scale-up across zones](#balanced-ha-scale-up-across-zones): Lines 86-124
+- [Balanced HA scale-up across zones](#balanced-ha-scale-up-across-zones): Lines 86-147
 
 ## Aligning with Committed Use Discounts (CUDs)
 
@@ -88,37 +88,60 @@ cost-effective nodes as capacity becomes available.
 "Balanced" spans **two independent layers** — clarify which the user wants:
 
 -   **Infrastructure (nodes):** `locationPolicy: BALANCED` spreads node scale-up
-    roughly evenly across zones (best-effort; **still scales up** if a zone is
-    short; `ANY` packs one zone).
--   **Workload (pods):** BALANCED does **not** balance pods. Add pod
-    `topologySpreadConstraints` (`maxSkew:1`, `topologyKey:
+    roughly evenly across zones **within a single multi-zone node pool**
+    (best-effort; **still scales up** if a zone is short; `ANY` packs one zone).
+    It does **not** balance across separate single-zone node pools.
+-   **Workload (pods):** `BALANCED` does **not** balance pods. Add pod
+    `topologySpreadConstraints` (`maxSkew: 1`, `topologyKey:
     topology.kubernetes.io/zone`, `whenUnsatisfiable: DoNotSchedule` — default
     `ScheduleAnyway` won't enforce it) on the **workload** (see
     `gke-cluster-autoscaler`).
 
-**Trap:** one priority *per zone* does NOT balance — priorities are sequential,
-so zone-a drains fully before zone-b is tried.
+**Trap:** one unscored priority *per zone* does NOT balance — priorities are
+sequential, so zone-a drains fully before zone-b is tried.
 
-**Method A — `locationPolicy: BALANCED` (no `priorityScore`, works
-pre-1.35.2):**
+**Method A1 — true multi-zone node pool (`locationPolicy: BALANCED` balances
+nodes across zones; works without `priorityScore`):**
 
--   Use **ONE** `priorities[]` entry per machine size (not one priority *per
-    zone*). Inside it, set `reservations.affinity: Specific`; the
-    `reservations.specific[]` list holds **one entry per zone** (3 zones → 3
-    named `specific[]` entries with their own `name` + `zones`). Don't make a
-    separate priority per reservation, and don't collapse all zones into a
-    single entry.
--   Set `location.locationPolicy: BALANCED`. **Schema:** do **not** put
-    `location.zones` on a `Specific`-reservation priority (error: *location
-    config with specific reservations enabled*) — zones come from the
-    reservations; the `location` block keeps `locationPolicy` only.
+-   **Open reservations (GKE `1.36.0-gke.3204000+`):** use
+    `reservations.affinity: AnyThenFail` with `location.locationPolicy:
+    BALANCED` and `location.zones: ['us-central1-a', 'us-central1-b',
+    'us-central1-c']`. NAP creates **one multi-zone node pool** spanning all
+    listed zones.
+-   **Specific reservations with the same name in every zone (pre-1.36 too):**
+    create GCE specific reservations with the **exact same name and identical
+    machine properties** in each zone, then list them in a **single**
+    `reservations.specific[]` entry (`name: <SHARED-RES-NAME>`,
+    `zones: ['us-central1-a', 'us-central1-b', 'us-central1-c']`) with
+    `location.locationPolicy: BALANCED`. NAP aggregates matching same-name
+    zonal reservations into **one multi-zone node pool**.
+-   **Schema rule:** do **not** put `location.zones` on a `Specific`-reservation
+    priority (error: *location config with specific reservations enabled*) —
+    zones come from `reservations.specific[].zones`; keep `locationPolicy` only
+    in `location`.
+
+**Method A2 — differently named specific reservations per zone (separate
+`specific[]` entries in one priority):**
+
+-   If existing zonal reservations already have **different names** (e.g.,
+    `res-a`, `res-b`, `res-c`), put all three as separate
+    `reservations.specific[]` entries inside **ONE** `priorities[]` rule (do
+    not split into sequential per-zone priorities).
+-   **Important NAP limitation:** each separate single-zone
+    `reservations.specific[]` entry causes node pool auto-creation to create its
+    own **single-zone node pool**. Because `locationPolicy: BALANCED` only
+    balances MIGs belonging to the *same* node pool, it does **not** guarantee
+    even spread across those separate pools (the price expander picks among them
+    via random shuffle + group-creation penalty). Pair with pod-level
+    `topologySpreadConstraints` (`maxSkew: 1`, `whenUnsatisfiable:
+    DoNotSchedule`) to enforce even zonal distribution.
 -   Asset: `balanced-reserved-zonal-compute-class.yaml`.
 
-**Method B — equal `priorityScore` (GKE 1.35.2-gke.1842000+; not balanced):**
+**Method B — equal `priorityScore` (GKE `1.35.2-gke.1842000+`; not balanced):**
 
 -   Define separate per-zone priority rules and assign them an **equal
     `priorityScore`** (max 3 rules/score).
 -   GKE evaluates them together via the autoscaler expander (lowest cost wins,
     with random tie-breaking when costs are equal). This is not round-robin and
-    does not guarantee an even zonal spread; use Method A (plus pod
-    `topologySpreadConstraints`) when balance matters.
+    does not guarantee an even zonal spread; add pod `topologySpreadConstraints`
+    when an even spread matters.

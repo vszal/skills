@@ -4,12 +4,12 @@
 
 - [Minimal shape](#minimal-shape): Lines 16-28
 - [Top-level spec fields](#top-level-spec-fields): Lines 29-75
-- [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 76-90
-- [`priorities[]` fields](#priorities-fields): Lines 91-158
-- [Important schema constraints](#important-schema-constraints): Lines 159-191
-- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 192-221
-- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 222-262
-- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 263-268
+- [`nodePoolConfig` (node pool auto-creation only)](#nodepoolconfig-node-pool-auto-creation-only): Lines 76-95
+- [`priorities[]` fields](#priorities-fields): Lines 96-163
+- [Important schema constraints](#important-schema-constraints): Lines 164-196
+- [`ccc_priority_index` node annotation](#cccpriorityindex-node-annotation): Lines 197-226
+- [Version floors (measured off live CRD schemas)](#version-floors-measured-off-live-crd-schemas): Lines 227-267
+- [`whenUnsatisfiable`](#whenunsatisfiable): Lines 268-273
 
 Full CRD: `kubectl describe crd computeclasses.cloud.google.com`.
 
@@ -81,10 +81,15 @@ Applied to pools created by the autoscaler.
 -   `sandbox.type`: `gvisor` (GKE 1.36.2+) or `microvm` (GKE 1.37.0+). Sets container runtime sandboxing (`runsc`) or hardware-isolated microVMs (`kata-clh` via `/dev/kvm`).
 -   `nodeLabels`: Key-value pairs.
 -   `taints`: List of `{ key, value, effect }`. Valid for an intentional
-    dedication taint; keys **cannot contain `kubernetes.io`** (GKE Warden
-    rejects it). **DO NOT re-add `cloud.google.com/compute-class` on
-    auto-created pools — GKE applies and auto-tolerates it. (Manual pools, by
-    contrast, REQUIRE it as label + taint to bind.)**
+    dedication taint; GKE admission rejects reserved system substrings
+    (`cloud.google.com`, `kubernetes.io`, `k8s.io`, `gke.io`) in both
+    `nodePoolConfig.taints` and `priorities[].taints` (with an explicit
+    exception for `startup-taint.cluster-autoscaler.kubernetes.io/` and
+    `status-taint.cluster-autoscaler.kubernetes.io/`; older clusters rejected
+    those too). **DO NOT re-add `cloud.google.com/compute-class` on
+    auto-created pools — GKE applies and auto-tolerates it, admission rejects
+    it, and Cluster Autoscaler drops system keys from `nodePoolConfig.taints`.
+    (Manual pools, by contrast, REQUIRE it as label + taint to bind.)**
 -   `serviceAccount`: Identity for nodes (use custom SA with least privilege,
     not default).
 

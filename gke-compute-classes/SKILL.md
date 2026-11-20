@@ -74,22 +74,24 @@ not block the user's initial request.** If asked for YAML/recommendations:
         ComputeClass achieves automatic node pools scoped directly to the
         ComputeClass. **It does NOT require turning on Node Auto Provisioning at
         the cluster level.**
-    *   **CRITICAL TAINT RULE:** The ONLY redundant taint is re-adding
-        `cloud.google.com/compute-class` on **auto-created** pools — node pool
-        auto-creation already applies AND auto-tolerates that key, so
-        duplicating it breaks scheduling → REMOVE it (don't add a toleration).
-        This is NOT "never add taints": an intentional **dedication/isolation**
-        taint (e.g. `dedicated=ml:NoSchedule`) in `nodePoolConfig.taints` is
-        valid — it keeps other workloads off, and the intended workloads need a
-        matching toleration (normal K8s contract). Judge intent before deleting;
-        only the compute-class key is redundant. **Manual pools STILL require
-        `cloud.google.com/compute-class=<NAME>` as label AND taint to bind to
-        the ComputeClass — never remove that.** **Schema limit:** a
-        `nodePoolConfig.taints` key may NOT contain the reserved `kubernetes.io`
-        substring (GKE Warden rejects it) — so the Cluster-Autoscaler-ignored
-        prefixes
-        (`startup-taint.`/`status-taint.cluster-autoscaler.kubernetes.io/`)
-        cannot be set via a ComputeClass; those are node-pool-level taints.
+    *   **CRITICAL TAINT RULE:** Do NOT re-add `cloud.google.com/compute-class`
+        on **auto-created** pools — node pool auto-creation already applies AND
+        auto-tolerates that key. GKE admission rejects reserved system taint
+        keys (`cloud.google.com`, `kubernetes.io`, `k8s.io`, `gke.io`) in both
+        `nodePoolConfig.taints` and `priorities[].taints` (with an explicit
+        exception for the Cluster Autoscaler prefixes
+        `startup-taint.cluster-autoscaler.kubernetes.io/` and
+        `status-taint.cluster-autoscaler.kubernetes.io/`; older GKE clusters
+        rejected those too), and even if admission is bypassed, Cluster
+        Autoscaler drops system keys from `nodePoolConfig.taints` → REMOVE the
+        redundant `cloud.google.com/compute-class` entry (don't add a
+        toleration). This is NOT "never add taints": an intentional
+        **dedication/isolation** taint (e.g. `dedicated=ml:NoSchedule`) in
+        `nodePoolConfig.taints` is valid — it keeps other workloads off, and
+        the intended workloads need a matching toleration (normal K8s contract).
+        Judge intent before deleting; only the compute-class key is redundant.
+        **Manual pools STILL require `cloud.google.com/compute-class=<NAME>` as
+        label AND taint to bind to the ComputeClass — never remove that.**
     *   **CRITICAL GPU-TAINT RULE:** GKE auto-taints GPU nodes
         `nvidia.com/gpu:NoSchedule` — this is separate from the
         `cloud.google.com/compute-class` auto-toleration and is NOT covered by
@@ -221,26 +223,38 @@ not block the user's initial request.** If asked for YAML/recommendations:
     (many small pods).
 -   **Balanced zonal scale-up — TWO layers (ask which the user means):**
     "Balanced" is ambiguous. **Infrastructure/node layer:**
-    `location.locationPolicy: BALANCED` makes the autoscaler spread node
-    scale-up roughly evenly across zones (best-effort; it **still scales up** if
-    a zone is short; `ANY` packs one zone). **Workload/pod layer:** BALANCED
-    does **not** guarantee even *pod* distribution — that needs pod
-    `topologySpreadConstraints` (`maxSkew:1`, `topologyKey:
-    topology.kubernetes.io/zone`, `whenUnsatisfiable: DoNotSchedule` — default
-    `ScheduleAnyway` won't enforce it), set on the **Pod**, not the ComputeClass
-    (xref `gke-cluster-autoscaler`). These layers are independent — pick the
-    one(s) the user actually wants. **Schema:** `location.zones` **cannot**
+    `location.locationPolicy: BALANCED` spreads node scale-up roughly evenly
+    across zones **within a single multi-zone node pool** (best-effort; it
+    **still scales up** if a zone is short; `ANY` packs one zone).
+    **Workload/pod layer:** `BALANCED` does **not** guarantee even *pod*
+    distribution — that needs pod `topologySpreadConstraints` (`maxSkew: 1`,
+    `topologyKey: topology.kubernetes.io/zone`, `whenUnsatisfiable:
+    DoNotSchedule` — default `ScheduleAnyway` won't enforce it), set on the
+    **Pod**, not the ComputeClass (xref `gke-cluster-autoscaler`).
+    **Reservations & multi-zone node pools:** `location.zones` **cannot**
     combine with `reservations.affinity: Specific` (error: *location config with
     specific reservations enabled*) — drop `location.zones`, keep a policy-only
     `location.locationPolicy`, and let zones come from
-    `reservations.specific[].zones`. Use **ONE** `priorities[]` entry per
-    machine size (not one priority *per zone* — sequential evaluation drains
-    zone-a first); inside that single priority, the `reservations.specific[]`
-    list carries **one entry per zonal reservation** (3 zones → 3 `specific[]`
-    entries, each with its own `name` + `zones`). Don't split zones into
-    separate priorities, and don't collapse them into one entry. Needs **no
-    `priorityScore`** (which itself requires GKE 1.35.2-gke.1842000+). Asset:
-    `balanced-reserved-zonal-compute-class.yaml`.
+    `reservations.specific[].zones`. Do **not** split zones into sequential
+    unscored priorities (sequential evaluation drains zone-a first). How
+    `BALANCED` behaves depends on reservation naming:
+    -   *True single multi-zone NAP node pool (`BALANCED` balances nodes across
+        zones):* either use open reservations with `reservations.affinity:
+        AnyThenFail` (GKE `1.36.0-gke.3204000+`) + `location.locationPolicy:
+        BALANCED` + `location.zones`, **or** create GCE specific reservations
+        with the **exact same name and machine properties in every zone** and
+        list them in a **single** `reservations.specific[]` entry (`name:
+        <SHARED-NAME>`, `zones: ['us-central1-a', 'b', 'c']`) with
+        `location.locationPolicy: BALANCED`.
+    -   *Differently named specific reservations per zone (3 separate
+        `reservations.specific[]` entries in one priority):* valid and avoids
+        sequential zone-a-first draining without needing `priorityScore`
+        (GKE `1.35.2-gke.1842000+`), **but** node pool auto-creation creates a
+        **separate single-zone node pool per `specific[]` entry**. Because
+        `BALANCED` only balances MIGs within the *same* node pool, it does
+        **not** guarantee even spread across separate single-zone pools — add
+        pod `topologySpreadConstraints` on the workload to enforce even zonal
+        spread. Asset: `balanced-reserved-zonal-compute-class.yaml`.
 -   **Stockout cooldown cascade — fallback laddering & stateful isolation:**
     -   *Cooldown Scope*: In GKE versions prior to `1.36.3-gke.1244000`, a hard zonal stockout (`out_of_resources` / `ZONE_RESOURCE_POOL_EXHAUSTED`) on a priority tier trips a ~5-minute **regional** cooldown on that whole tier across all zones. Starting in GKE `1.36.3-gke.1244000+`, stockout cooldowns are strictly **zonal**, keeping healthy zones active on preferred tiers (quota errors remain regional).
     -   *Cascade Mechanism*: Cascades to the bottom tier occur when **zonally constrained workloads** (pods bound to a zonal PV or rigid zonal `nodeSelector`/affinity) demand capacity in a stocked-out zone, forcing evaluation down the fallback ladder and tripping the 5-minute cooldown.

@@ -19,7 +19,7 @@ When verifying behavior or investigating edge cases, clone the repository or fet
 | **Manual `priorities[].nodepools` bypass** | `pkg/backoff/npc_backoff.go` | `len(rule.NodePoolNames()) > 0` | Manual node pool rules bypass `npcCrdBackoff` and rely strictly on standard GCE MIG backoffs. |
 | **Zonal stockout backoff tracking** | `pkg/backoff/npc_backoff.go` | `rules map[int]map[string]bool` | GKE 1.36.3-gke.1244000+ tracks stockouts per zone (`ruleIdx -> zone -> isBackedOff`). |
 | **Regional quota backoff handling** | `pkg/backoff/npc_backoff.go` | `if strings.Contains(errorInfo.ErrorCode, "QUOTA") { zone = "" }` | Quota errors apply rule-wide / regionally across all zones. |
-| **DWS Flex Start queuing delay** | `pkg/cloudprovider/gke/gke_cloud_provider_impl.go` | `DefaultFlexStartCapacityCheckWaitTime = 15 * time.Minute` | Queued capacity waits up to 15m for capacity checks (max 30m provisioning wait). |
+| **DWS Flex Start queuing delay** | `pkg/cloudprovider/gke/gke_cloud_provider_impl.go` | `DefaultFlexStartCapacityCheckWaitTime = 15 * time.Minute` | The 15m constant is a code failsafe, not the effective default: GKE falls back once the initial attempt fails (~3 min) unless `capacityCheckWaitTimeSeconds` extends the wait (max 30m provisioning wait). |
 
 ---
 
