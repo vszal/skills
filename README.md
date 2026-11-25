@@ -1,22 +1,31 @@
-# Agent Skills 
+# GKE agent skills (archived)
 
-[![Install via skills.sh](https://img.shields.io/badge/skills.sh-install-green)](https://skills.sh/vszal/skills)
+This repository is retired and archived. Both Google Kubernetes Engine (GKE) agent skills have moved to the official Google skills repository at [github.com/google/skills](https://github.com/google/skills).
 
-This repository contains development [Agent Skills](https://agentskills.io/home) for GKE node autoscaling features like ComputeClasses and Cluster Autoscaler. This is not an official Google repo. 
-Use the [Google skills repo](https://github.com/google/skills) for more stable verions.
+Git history is preserved here for reference, but all future updates ship exclusively from `google/skills`.
 
-## Installation
+## Migration guide
+
+If you previously installed skills from `vszal/skills`, remove the legacy entries (or run `npx skills update` to clear obsolete references) and reinstall them from `google/skills`:
 
 ```bash
-npx skills add vszal/skills
+# 1. Remove the retired skills from vszal/skills (add -g for global installs)
+npx skills remove gke-compute-classes gke-cluster-autoscaler
+
+# Optional: refresh existing skill lockfiles
+npx skills update
+
+# 2. Install the official skills from google/skills (add -g for global installs)
+npx skills add google/skills -s gke-compute-classes gke-cluster-autoscaler
 ```
 
-From the `npx install` command, you can select the specific skills from this
-repo to install.
+## Official skill locations
 
-## Available Skills
-
-| Skill | Description | Maturity |
+| Skill | Description | Official location |
 | :--- | :--- | :--- |
-| [**GKE ComputeClasses**](./gke-compute-classes) | Priority-based node provisioning and fallback management. | [Google skills repo](https://github.com/google/skills)  |
-| [**GKE Cluster Autoscaler**](./gke-cluster-autoscaler) | Optimization, consolidation tuning, and debugging pending pods. | [Google skills repo](https://github.com/google/skills)  |
+| **gke-compute-classes** | Configuring, optimizing, and troubleshooting GKE custom ComputeClasses, priority fallback ladders, and node pool auto-creation. | [github.com/google/skills/tree/main/skills/cloud/gke-compute-classes](https://github.com/google/skills/tree/main/skills/cloud/gke-compute-classes) |
+| **gke-cluster-autoscaler** | Enabling, tuning, and debugging GKE Cluster Autoscaler, consolidation, scale-up backoffs, and capacity buffers. | [github.com/google/skills/tree/main/skills/cloud/gke-cluster-autoscaler](https://github.com/google/skills/tree/main/skills/cloud/gke-cluster-autoscaler) |
+
+## Related repositories
+
+- **[vszal/gke-custom-compute-class-examples](https://github.com/vszal/gke-custom-compute-class-examples)**: Remains active for runnable ComputeClass manifests, scale demos, and configuration examples (no official Google equivalent exists).
